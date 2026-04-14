@@ -47,15 +47,16 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: list[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
-        "https://Nivo.co",
-        "https://app.Nivo.co",
+        "https://nivo.co",
+        "https://app.nivo.co",
     ]
-    ALLOWED_HOSTS: list[str] = ["Nivo.co", "api.Nivo.co"]
+    ALLOWED_HOSTS: list[str] = ["nivo.co", "api.nivo.co"]
 
     # ─── Pagos / Pasarela ─────────────────────────────────────────────────────
     PAYMENT_GATEWAY: Literal["wompi", "payu"] = "wompi"
     PAYMENT_GATEWAY_API_KEY: str = ""
     PAYMENT_GATEWAY_SECRET: str = ""
+    WOMPI_EVENTS_SECRET: str = ""
     MONEY_CUSTODY_MODE: Literal[
         "non_custodial_middleware",
         "bank_partner",

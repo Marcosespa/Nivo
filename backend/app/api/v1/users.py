@@ -3,8 +3,10 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 
@@ -30,7 +32,10 @@ class WalletResponse(BaseModel):
 
 
 @router.get("/me", response_model=UserProfileResponse)
-async def get_profile(current_user: Annotated[User, Depends(get_current_user)]):
+async def get_profile(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     """Retorna el perfil del usuario autenticado."""
     return UserProfileResponse(
         id=current_user.id,
@@ -42,7 +47,10 @@ async def get_profile(current_user: Annotated[User, Depends(get_current_user)]):
 
 
 @router.get("/me/wallet", response_model=WalletResponse)
-async def get_wallet(current_user: Annotated[User, Depends(get_current_user)]):
+async def get_wallet(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     """Retorna el saldo visual y estado de la billetera del usuario."""
     # TODO: consultar saldo visual desde el aliado regulado configurado.
     # En modo MVP, Nivo no es el ledger legal de fondos del usuario.

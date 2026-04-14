@@ -20,8 +20,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.database import get_db
 from app.core.security import get_current_user
 from app.crypto.service import CryptoService
 from app.models.user import User
@@ -119,6 +121,7 @@ class TransactionDetail(BaseModel):
 async def initiate_payment(
     request: PaymentInitiateRequest,
     current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PaymentInitiateResponse:
     """
     Flujo de pago:
@@ -161,6 +164,7 @@ async def initiate_payment(
 async def confirm_payment(
     request: PaymentConfirmRequest,
     current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PaymentConfirmResponse:
     """
     Flujo de confirmación:
@@ -209,28 +213,12 @@ async def confirm_payment(
 
 
 @router.get(
-    "/{tx_id}",
-    response_model=TransactionDetail,
-    summary="Consultar transacción",
-)
-async def get_transaction(
-    tx_id: str,
-    current_user: Annotated[User, Depends(get_current_user)],
-) -> TransactionDetail:
-    """Consulta el estado y detalles de una transacción específica."""
-    # TODO: implementar consulta real a BD
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Transacción {tx_id} no encontrada",
-    )
-
-
-@router.get(
-    "/",
+    "/history",
     summary="Historial de movimientos",
 )
 async def get_payment_history(
     current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     page: int = 1,
     page_size: int = 20,
     direction: str = "all",   # "sent", "received", "all"
@@ -246,3 +234,21 @@ async def get_payment_history(
         "page_size": page_size,
         "total": 0,
     }
+
+
+@router.get(
+    "/{tx_id}",
+    response_model=TransactionDetail,
+    summary="Consultar transacción",
+)
+async def get_transaction(
+    tx_id: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TransactionDetail:
+    """Consulta el estado y detalles de una transacción específica."""
+    # TODO: implementar consulta real a BD
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Transacción {tx_id} no encontrada",
+    )

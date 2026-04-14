@@ -30,7 +30,7 @@
 ---
 
 ### FIX-001 — Corregir bug `init_db()` en `database.py` (SQLAlchemy 2.0)
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 30 minutos
 **Prioridad:** CRÍTICA — la app no arranca correctamente sin este fix
@@ -85,7 +85,7 @@ async def init_db():
 ---
 
 ### FIX-002 — Eliminar `shared_secret_hex` de `KeyExchangeResponse` (Vulnerabilidad crítica de seguridad)
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 30 minutos
 **Prioridad:** CRÍTICA — exponer el shared secret invalida toda la protección de ML-KEM
@@ -125,7 +125,7 @@ class KeyExchangeResponse(BaseModel):
 ---
 
 ### FIX-003 — Eliminar `signing_key_hex` de `SignRequest` (Vulnerabilidad crítica de seguridad)
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 2–3 horas
 **Prioridad:** CRÍTICA — aceptar llaves privadas vía API es un patrón de seguridad roto
@@ -183,7 +183,7 @@ class SignResponse(BaseModel):
 ---
 
 ### FIX-004 — Conectar algoritmos PQC desde `settings` en `CryptoService` (Crypto-agility)
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 30 minutos
 **Prioridad:** ALTA — viola ADR-002 (crypto-agility)
@@ -232,7 +232,7 @@ return {
 ---
 
 ### FIX-005 — Inyectar sesión de BD en routers (`payments.py`, `users.py`, `auth.py`)
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 1–2 horas
 **Prioridad:** ALTA — sin esto, ningún endpoint puede leer ni escribir en la BD
@@ -278,7 +278,7 @@ real, la firma del endpoint ya es correcta y no rompe contratos.
 ---
 
 ### FIX-006 — Agregar campos regulatorios a modelo `Transaction` Pydantic
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 30 minutos
 **Prioridad:** ALTA — sin estos campos la conciliación con el aliado regulado es imposible
@@ -342,7 +342,7 @@ class Transaction(BaseModel):
 ---
 
 ### FIX-007 — Corregir URLs en CORS y `ALLOWED_HOSTS` (mayúsculas en dominios)
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 15 minutos
 **Prioridad:** MEDIA — en producción rompe requests legítimos cross-origin
@@ -387,7 +387,7 @@ ALLOWED_HOSTS: list[str] = ["nivo.co", "api.nivo.co"]
 ---
 
 ### FIX-008 — Corregir orden de rutas y agregar `/history` en `payments.py`
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 30 minutos
 **Prioridad:** MEDIA — el router actual tiene `GET /` donde debería ser `GET /history`
@@ -426,7 +426,7 @@ Adicionalmente, `GET /` como lista de recursos no sigue REST semántico; debe se
 ---
 
 ### FIX-009 — Eliminar entrada duplicada de `httpx` en `requirements.txt`
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 5 minutos
 **Prioridad:** BAJA — no rompe nada pero es ruido que puede confundir en auditorías
@@ -455,7 +455,7 @@ sección `Dev / Testing`). Mantener la que está en `HTTP Client`.
 ---
 
 ### TASK-001 — Configurar Base de Datos con SQLAlchemy ORM
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 4–6 horas
 **Prioridad:** CRÍTICA
@@ -596,7 +596,7 @@ INDEX: (phone_number, expires_at)
 ---
 
 ### TASK-002 — Implementar JWT Real y Autenticación Completa
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 6–8 horas
 **Prioridad:** CRÍTICA
@@ -653,7 +653,7 @@ access + refresh tokens, blacklist en Redis, y la dependencia `get_current_user`
 ---
 
 ### TASK-003 — Implementar Cuenta Nivo, Wallet Visual y Transacciones Atómicas
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 8–10 horas
 **Prioridad:** CRÍTICA
@@ -734,7 +734,7 @@ Calcular: SUM(amount_cop) WHERE sender_id=? AND created_at >= today_start AND st
 ---
 
 ### TASK-004 — Tests Unitarios del Módulo CryptoService
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 4–5 horas
 **Prioridad:** CRÍTICA
@@ -795,7 +795,7 @@ class TestCryptoAgility:
 ---
 
 ### TASK-005 — Integrar Twilio para Envío de OTP
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 3–4 horas
 **Prioridad:** ALTA

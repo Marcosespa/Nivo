@@ -1,9 +1,10 @@
 """Nivo — Configuración de base de datos (SQLAlchemy async)."""
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from app.core.config import settings
+from app.models.base import Base  # noqa: F401 — re-exportado para que alembic/env.py lo importe
 
 engine = create_async_engine(
     settings.DATABASE_URL,
@@ -12,27 +13,22 @@ engine = create_async_engine(
     echo=settings.DEBUG,
 )
 
-AsyncSessionLocal = sessionmaker(
-    bind=engine,
+AsyncSessionLocal = async_sessionmaker(
+    engine,
     class_=AsyncSession,
     expire_on_commit=False,
 )
 
 
-class Base(DeclarativeBase):
-    pass
-
-
-async def init_db():
+async def init_db() -> None:
     """Inicializa la conexión y verifica la BD al arrancar."""
     async with engine.begin() as conn:
-        # Verificar conectividad
-        await conn.run_sync(lambda c: c.execute(c.text("SELECT 1")))
+        await conn.execute(text("SELECT 1"))
     print("✅ Base de datos conectada")
 
 
 async def get_db():
-    """Dependencia FastAPI para sesiones de BD."""
+    """Dependencia FastAPI — provee una AsyncSession por request."""
     async with AsyncSessionLocal() as session:
         try:
             yield session

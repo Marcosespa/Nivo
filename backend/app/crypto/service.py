@@ -97,10 +97,10 @@ class CryptoService:
         session_key = encap.shared_secret  # usar para AES-256-GCM
     """
 
-    KEM_ALGORITHM = "ML-KEM-768"
-    SIG_ALGORITHM = "ML-DSA-65"
-
     def __init__(self):
+        from app.core.config import settings
+        self.KEM_ALGORITHM = settings.PQC_ALGORITHM
+        self.SIG_ALGORITHM = settings.PQC_SIGNATURE_ALGORITHM
         self._liboqs_available = LIBOQS_AVAILABLE
 
     # ─── Generación de llaves ─────────────────────────────────────────────────
@@ -166,8 +166,10 @@ class CryptoService:
                     recipient_pqc_public_key
                 )
         else:
+            # Simulación: el ciphertext es aleatorio pero el shared secret
+            # se deriva deterministicamente de él, igual que en KEM real.
             pqc_ciphertext = os.urandom(1088)   # tamaño real ML-KEM-768
-            pqc_shared_secret = os.urandom(32)
+            pqc_shared_secret = hashlib.sha256(pqc_ciphertext).digest()
 
         # 2. X25519 Diffie-Hellman efímero
         my_x25519_private = X25519PrivateKey.generate()
@@ -204,7 +206,9 @@ class CryptoService:
             with oqs.KeyEncapsulation(self.KEM_ALGORITHM, pqc_secret_key) as kem:
                 pqc_shared_secret = kem.decap_secret(pqc_ciphertext)
         else:
-            pqc_shared_secret = os.urandom(32)
+            # Simulación: derivar el mismo secret que el emisor calculó
+            # (en KEM real, el ciphertext contiene el secret cifrado con pk)
+            pqc_shared_secret = hashlib.sha256(pqc_ciphertext).digest()
 
         # 2. X25519 DH
         from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
@@ -232,8 +236,10 @@ class CryptoService:
             with oqs.Signature(self.SIG_ALGORITHM, signing_secret_key) as signer:
                 signature = signer.sign(payload)
         else:
-            # Mock para desarrollo/tests
-            signature = hmac.new(signing_secret_key[:32], payload, hashlib.sha256).digest()
+            # Simulación: HMAC usando SHA256(sk) como clave.
+            # El verificador solo tiene pk = SHA256(sk), así que usamos pk directamente.
+            hmac_key = hashlib.sha256(signing_secret_key).digest()
+            signature = hmac.new(hmac_key, payload, hashlib.sha256).digest()
 
         return SignedTransaction(
             tx_id=tx_id,
@@ -262,8 +268,9 @@ class CryptoService:
             except Exception:
                 return False
         else:
-            # Mock para desarrollo
-            expected = hmac.new(signer_public_key[:32], signed_tx.payload, hashlib.sha256).digest()
+            # Simulación: pk = SHA256(sk), usamos pk directamente como clave HMAC.
+            # El firmador usó SHA256(sk) como clave, y pk == SHA256(sk), así que coincide.
+            expected = hmac.new(signer_public_key, signed_tx.payload, hashlib.sha256).digest()
             return hmac.compare_digest(expected, signed_tx.signature)
 
     # ─── Cifrado Simétrico (AES-256-GCM) ─────────────────────────────────────
@@ -352,9 +359,14 @@ class CryptoService:
         return hkdf.derive(combined_ikm)
 
     def _mock_keypair(self, algorithm: str) -> PQCKeyPair:
-        """Llave simulada para entornos sin liboqs (solo desarrollo/CI)."""
+        """
+        Llave simulada para entornos sin liboqs (solo desarrollo/CI).
+
+        Invariante de simulación:
+          pk = SHA256(sk)  →  permite sign/verify consistentes con HMAC(pk, payload).
+        """
         sk = os.urandom(64)
-        pk = os.urandom(32)
+        pk = hashlib.sha256(sk).digest()  # pk determinista a partir de sk
         return PQCKeyPair(
             algorithm=algorithm,
             public_key=pk,

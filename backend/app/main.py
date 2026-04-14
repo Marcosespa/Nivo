@@ -13,7 +13,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.v1 import auth, users, payments, crypto, health
+from app.api.v1 import auth, users, payments, crypto, health, kyc, topup, withdrawal
 from app.crypto.service import CryptoService
 
 
@@ -71,6 +71,9 @@ app.include_router(health.router, prefix="/health", tags=["Health"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Autenticación"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Usuarios"])
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["Pagos"])
+app.include_router(kyc.router, prefix="/api/v1/kyc", tags=["KYC"])
+app.include_router(topup.router, prefix="/api/v1/topup", tags=["Top-ups"])
+app.include_router(withdrawal.router, prefix="/api/v1/withdrawal", tags=["Retiros"])
 app.include_router(crypto.router, prefix="/api/v1/crypto", tags=["PQC API B2B"])
 
 

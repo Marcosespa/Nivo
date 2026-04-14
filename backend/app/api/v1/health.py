@@ -61,7 +61,7 @@ async def health_pqc():
         "status": "ok",
         "pqc": "PASS",
         "algorithm_kem": settings.PQC_ALGORITHM,
-        "algorithm_sig": "ML-DSA-65",
+        "algorithm_sig": settings.PQC_SIGNATURE_ALGORITHM,
         "hybrid_mode": settings.HYBRID_MODE,
         "liboqs_available": crypto._liboqs_available,
         "timestamp": datetime.now(timezone.utc).isoformat(),

@@ -36,16 +36,15 @@ class KeyExchangeResponse(BaseModel):
     pqc_ciphertext_hex: str          # Texto cifrado ML-KEM para enviar al receptor
     classical_public_key_hex: str    # Llave pública X25519 efímera del emisor
     algorithm: str = "ML-KEM-768 + X25519 (hybrid)"
-    shared_secret_hex: str           # SOLO para debug — en producción NO incluir
 
 
 class SignRequest(BaseModel):
     data_hex: str           # Datos a firmar (hex)
-    signing_key_hex: str    # Llave privada ML-DSA-65 (hex) — nunca almacenar aquí
 
 
 class SignResponse(BaseModel):
     signature_hex: str
+    public_key_hex: str                 # Llave PÚBLICA para que el llamador verifique
     public_key_fingerprint: str
     algorithm: str = "ML-DSA-65"
 
@@ -126,35 +125,48 @@ async def list_algorithms():
     summary="Firmar datos con ML-DSA-65",
     description=(
         "Firma datos arbitrarios con ML-DSA-65. "
+        "Genera un keypair efímero, firma los datos y retorna la firma + llave PÚBLICA. "
         "La firma resultante es verificable a perpetuidad, "
         "independiente de futuros avances en computación cuántica."
     ),
 )
 async def sign_data(request: SignRequest) -> SignResponse:
-    """Firma datos con ML-DSA-65."""
+    """
+    Firma datos con ML-DSA-65.
+    Genera un keypair efímero, firma los datos, y retorna firma + llave pública.
+    Las llaves privadas NUNCA viajan por la API.
+    """
+    # Validar que el request no contiene claves privadas
+    request_dict = request.model_dump()
+    forbidden_keys = {"signing_key_hex", "secret_key_hex", "private_key_hex", "sk"}
+    if any(key in request_dict for key in forbidden_keys):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Las llaves privadas NUNCA deben enviarse en esta API. Use HSM/KMS.",
+        )
+
     try:
         data = bytes.fromhex(request.data_hex)
-        signing_key = bytes.fromhex(request.signing_key_hex)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Los datos y la llave deben estar en formato hex",
+            detail="Los datos deben estar en formato hex válido",
         )
 
-    # Generar keypair temporal para derivar public_key_fingerprint
-    # En producción, el cliente maneja sus propias llaves
-    import hashlib
-    pk_mock = bytes.fromhex(request.signing_key_hex[:64])
+    # Generar keypair efímero ML-DSA-65
+    signing_kp = crypto.generate_signing_keypair()
 
+    # Firmar datos
     signed = crypto.sign_transaction(
         tx_id="b2b_api",
         payload=data,
-        signing_secret_key=signing_key,
-        public_key_fingerprint=hashlib.sha256(pk_mock).hexdigest(),
+        signing_secret_key=signing_kp.secret_key,
+        public_key_fingerprint=signing_kp.public_key_fingerprint,
     )
 
     return SignResponse(
         signature_hex=signed.signature.hex(),
+        public_key_hex=signing_kp.public_key.hex(),
         public_key_fingerprint=signed.public_key_fingerprint,
     )
 
