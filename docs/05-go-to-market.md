@@ -58,9 +58,10 @@ Ankatech ya está convenciendo al primer banco colombiano de adoptar PQC en 2025
 **Canal:** comunidades profesionales + gremio fintech + contenido educativo.
 
 **Mensajes simplificados para público general:**
-- "Paga, cambia y controla tu plata desde una sola app"
+- "Paga, ahorra, invierte y protege tu plata desde una sola app"
 - "Privacidad y trazabilidad para quienes cobran fuera y viven en Colombia"
-- Evitar jerga técnica: PQC se menciona solo en contenido B2B, compliance, salud/legal y pitch técnico
+- "Blindaje cuántico activo: tu plata y tus datos preparados para la próxima era tecnológica"
+- Evitar jerga innecesaria: PQC se explica como protección post-cuántica, recibos verificables y seguridad de largo plazo; los detalles ML-KEM/ML-DSA viven en pantallas avanzadas, compliance y pitch técnico
 
 **Tácticas:**
 - Ofrecer cobro en USD/EUR y recepción en COP mediante aliados cuando el flujo esté habilitado
@@ -71,7 +72,7 @@ Ankatech ya está convenciendo al primer banco colombiano de adoptar PQC en 2025
 - PR en medios: Semana, Portafolio, El Tiempo Economía — ángulo de "la startup colombiana que está un paso adelante"
 - Alianza con Platzi: "Curso gratis de finanzas digitales" patrocinado por Nivo
 - Participación en Colombia Fintech Summit y Campus Party Colombia
-- Waitlist separada para multi-moneda, crypto y acciones, sin prometer fecha hasta tener partner legal
+- Waitlist separada para ahorro real, multi-moneda, crypto y acciones, sin prometer fecha hasta tener partner legal
 
 **KPI:** 1,000 usuarios activos, 1,000 transacciones firmadas, primeras pymes/freelancers recurrentes
 
@@ -116,14 +117,14 @@ Ankatech ya está convenciendo al primer banco colombiano de adoptar PQC en 2025
 
 ### Nombre recomendado: Nivo
 
-**Decisión:** `Nivo` queda como codename técnico. La marca pública recomendada es **Nivo**, sujeta a búsqueda legal de marca, dominios y redes.
+**Decisión:** **Nivo** queda como marca pública candidata y nombre de producto, sujeta a búsqueda legal de marca, dominios y redes.
 
 **Por qué Nivo es más fuerte:**
 - Es corto, memorable y fácil de pronunciar en Colombia y LATAM
 - Suena a "nuevo nivel", con una sensación futurista sin ser técnico
 - Funciona para usuario final, comercios, multi-moneda, inversión y API B2B
 - Es más fácil de explicar: "tu plata, en otro nivel"
-- Conecta con el proyecto de landing actualizado (`LANDING PAGE/nivo`)
+- Conecta con el proyecto de landing actualizado (`landing_page/nivo`)
 - Evita la cercanía con `QuantumPay`, que ya aparece usado por terceros en pagos
 
 **Alternativas consideradas y rechazadas:**
@@ -133,7 +134,6 @@ Ankatech ya está convenciendo al primer banco colombiano de adoptar PQC en 2025
 - ~~CuánticoPay~~ — español, limita expansión internacional
 - ~~ShieldPay~~ — nombre genérico, sin diferenciación cuántica
 - ~~QuantumPay~~ — conflicto de nombre en pagos; demasiado literal
-- ~~Nivo~~ — buen codename, pero cercano a QuantumPay y menos claro para usuarios no técnicos
 
 ### Paleta de marca
 - **Primario:** Sky Blue (#38BDF8) — tecnología, futuro, cielo digital
@@ -142,10 +142,11 @@ Ankatech ya está convenciendo al primer banco colombiano de adoptar PQC en 2025
 - **Tipografía:** Inter o Geist — moderna, técnica, legible
 
 ### Taglines por segmento
-- **B2C:** *"Tu plata, blindada para siempre"*
-- **Comercios:** *"Cobra con la tecnología del futuro"*
+- **B2C:** *"Tu banco para la era cuántica"*
+- **Ahorro/inversión:** *"Ahorra, cambia e invierte desde un solo lugar"*
+- **Comercios:** *"Cobra con recibos verificables"*
 - **B2B:** *"PQC-as-a-Service para el sistema financiero"*
-- **General:** *"Quantum-safe · Colombia"*
+- **General:** *"Tu plata, en otro nivel"*
 
 ---
 

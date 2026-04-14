@@ -7,16 +7,16 @@
 
 ## 1. Nombre recomendado
 
-**Recomendacion:** mover la marca publica de `Nivo` a **Nivo**.
+**Recomendacion:** mantener **Nivo** como marca publica candidata, sujeta a busqueda formal de marca, dominios y redes.
 
 **Por que mejora la idea:**
 - Es corto, simple y facil de pronunciar en Colombia y LATAM.
 - Suena futurista sin obligar al usuario a entender fisica cuantica.
 - Funciona para B2C, comercios y API B2B: wallet, tarjetas, monedas, inversion, seguridad y compliance caben bajo la misma marca.
-- Evita el problema de `QuantumPay`, que ya aparece usado por terceros en pagos; `Nivo` queda demasiado cerca y puede ser dificil de defender.
-- Conecta con el nuevo activo de landing: `LANDING PAGE/nivo`.
+- Evita el problema de `QuantumPay`, que ya aparece usado por terceros en pagos y suena demasiado literal para una marca de consumo.
+- Conecta con el nuevo activo de landing: `landing_page/nivo`.
 
-**Uso interno inmediato:** mantener `Nivo` como codename tecnico hasta hacer busqueda formal de marca, dominios y redes. Si legal confirma disponibilidad, renombrar en bloque a `Nivo`.
+**Uso interno inmediato:** mantener `Nivo` como nombre de producto y repositorio hasta hacer busqueda formal de marca, dominios y redes. Si legal confirma disponibilidad, consolidar todos los dominios, documentos y activos bajo Nivo.
 
 ---
 
@@ -187,7 +187,7 @@ PQC, KYC, pasarelas, auditorias y compliance cuestan antes de que B2C pague sufi
 | Regulacion por captacion | Alto si se guarda saldo propio | MVP sin custodia; aliado regulado; abogado desde mes 1 |
 | PQC como mensaje demasiado tecnico | Alto en B2C masivo | Traducir a "recibos verificables" y "proteccion de largo plazo" |
 | Competir contra Nequi por habito | Alto | Nicho inicial: exterior, freelancers, pymes digitales |
-| Nombres similares en pagos | Medio/alto | Validar Nivo y abandonar QuantumPay/Nivo como marca final |
+| Nombres similares en pagos | Medio/alto | Validar Nivo y abandonar QuantumPay u otros nombres demasiado cercanos a pagos genéricos |
 | Costos PCI/tarjeta | Medio | Tarjeta virtual via emisor/BaaS, no manejo directo de PAN |
 | Crypto/acciones dentro de la misma app | Alto regulatoriamente | Modulos separados con partner responsable, disclosures y sin asesoria |
 

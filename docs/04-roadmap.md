@@ -8,10 +8,10 @@
 ## Visión del Roadmap
 
 ```
-Mes 1–4       Mes 5–8         Mes 9–12        Año 2
-   │               │               │              │
-[MVP Core]  [Comercios +   [API B2B PQC   [LATAM
-[P2P + PQC]  Tarj. Virtual]  + Lanzamiento]  Expansión]
+Mes 1–4       Mes 5–8             Mes 9–12              Año 2
+   │               │                   │                  │
+[Cuenta +    [Tarjeta +          [Multi-moneda +      [Nivo Bank
+ Pagos PQC]  Ahorro + Comercios] Inversiones piloto]  LATAM]
 ```
 
 ---
@@ -19,7 +19,7 @@ Mes 1–4       Mes 5–8         Mes 9–12        Año 2
 ## FASE 1 — MVP Core (Mes 1–4)
 ### "La billetera más segura de Colombia"
 
-**Objetivo:** Tener un MVP P2P funcional con PQC híbrido, KYC y recibos firmados, listo para beta cerrada con 500 usuarios reales **sin captación directa de dinero**. El saldo legal y el movimiento de fondos viven en pasarela/banco/aliado regulado.
+**Objetivo:** Tener la primera versión de la cuenta Nivo: pagos P2P, KYC, recibos firmados y blindaje cuántico visible, lista para beta cerrada con 500 usuarios reales. En esta fase no hay captación directa de dinero salvo que exista cobertura de banco aliado, COT o SEDPE; el saldo legal y el movimiento de fondos viven en pasarela/banco/aliado regulado.
 
 ### Mes 1 — Fundaciones
 
@@ -27,7 +27,7 @@ Mes 1–4       Mes 5–8         Mes 9–12        Año 2
 - [ ] Setup de repositorio, CI/CD, entornos (dev/staging/prod)
 - [ ] Módulo `CryptoService` con ML-KEM-768 + X25519 híbrido
 - [ ] Módulo de firma ML-DSA-65 para transacciones
-- [ ] Modelos de base de datos: users, wallets, transactions, pqc_keys
+- [ ] Modelos de base de datos: users, wallets, savings_pockets, transactions, pqc_keys, partner_orders
 - [ ] Endpoint de health check incluyendo `/health/pqc`
 - [ ] Tests unitarios para módulo crypto (cobertura >90%)
 
@@ -49,7 +49,7 @@ Mes 1–4       Mes 5–8         Mes 9–12        Año 2
 - [ ] 1 Backend Developer senior contratado
 - [ ] 1 Mobile Developer React Native contratado
 
-**Hito del Mes 1:** `POST /api/v1/crypto/test-transaction` funcional con PQC híbrido ✓
+**Hito del Mes 1:** `POST /api/v1/crypto/test-transaction` funcional con PQC híbrido y mensaje de producto "blindaje cuántico activo" definido ✓
 
 ---
 
@@ -69,8 +69,9 @@ Mes 1–4       Mes 5–8         Mes 9–12        Año 2
 **Mobile:**
 - [ ] Pantallas: Splash, Onboarding, Registro por celular
 - [ ] Pantalla de billetera con saldo
+- [ ] Pantalla de bolsillos de ahorro visuales (metas, categorías, progreso)
 - [ ] Flujo de envío de dinero por número de celular
-- [ ] Recibo de transacción con "Protección activa" visible
+- [ ] Recibo de transacción con "Blindaje cuántico activo" visible
 
 **Hito del Mes 2:** Primera transacción de pago real (interna) con firma ML-DSA verificable ✓
 
@@ -125,10 +126,10 @@ Mes 1–4       Mes 5–8         Mes 9–12        Año 2
 
 ---
 
-## FASE 2 — Comercios + Tarjeta Virtual (Mes 5–8)
-### "El datafóno del futuro"
+## FASE 2 — Tarjeta, Ahorro y Comercios (Mes 5–8)
+### "La cuenta que la banca local no ofrece"
 
-**Objetivo:** Habilitar pagos en comercios y tarjeta virtual, llegar a 8,000 usuarios activos.
+**Objetivo:** Habilitar tarjeta virtual, bolsillos de ahorro, pagos en comercios y cuenta diaria tipo Revolut, llegando a 8,000 usuarios activos.
 
 ### Mes 5–6 — Terminal QR para Comercios
 
@@ -156,6 +157,13 @@ Mes 1–4       Mes 5–8         Mes 9–12        Año 2
 
 ### Mes 7–8 — Tarjeta Virtual y Lanzamiento Público
 
+**Ahorro y control financiero:**
+- [ ] Bolsillos de ahorro: metas, reglas automáticas, nombres personalizados y progreso
+- [ ] Separación legal explícita: meta visual vs. saldo real del partner
+- [ ] Si hay banco/SEDPE aliado: subcuentas o referencias de ahorro sincronizadas desde el proveedor
+- [ ] Reglas de ahorro: redondeo de compras, porcentaje de ingreso, monto recurrente
+- [ ] Recibos y movimientos de ahorro con firma ML-DSA cuando cambie estado o saldo
+
 **Tarjeta Virtual:**
 - [ ] Integración con emisor de tarjetas (Pomelo, Dock, Adyen o aliado equivalente)
 - [ ] Emisión de tarjeta virtual Visa/Mastercard por usuario Plus
@@ -165,7 +173,7 @@ Mes 1–4       Mes 5–8         Mes 9–12        Año 2
 - [ ] Confirmación de alcance PCI-DSS: Nivo solo maneja tokens, no PAN/CVV
 
 **Marketing y Lanzamiento:**
-- [ ] Landing page cuantapay.co
+- [ ] Landing page pública Nivo (`nivo.money`, `nivo.co` o dominio aprobado por búsqueda legal)
 - [ ] Campaña de referidos (invita 3, gana 1 mes gratis de Plus)
 - [ ] Contenido educativo: "¿Por qué tu billetera actual no es segura?" (blog, LinkedIn, TikTok)
 - [ ] Eventos en Bogotá Tech Week y Campus Party Colombia
@@ -186,20 +194,21 @@ Mes 1–4       Mes 5–8         Mes 9–12        Año 2
 
 ---
 
-## FASE 3 — API B2B + Escala (Mes 9–12)
-### "Infraestructura PQC para Colombia"
+## FASE 3 — Multi-moneda, API B2B e Inversión Controlada (Mes 9–12)
+### "El Revolut quantum-safe de Colombia"
 
-**Objetivo:** Lanzar API B2B de PQC-as-a-Service, cerrar 3 contratos B2B, 50,000 usuarios activos.
+**Objetivo:** Lanzar multi-moneda vía aliado, API B2B segura y pilotos controlados de inversión/crypto con partners, cerrando 3 contratos B2B y llegando a 50,000 usuarios activos.
 
 ### Mes 9–10 — API B2B PQC
 
 **Backend:**
-- [ ] API de PQC-as-a-Service pública con autenticación por API key
+- [ ] API de PQC-as-a-Service pública con autenticación por API key, scopes y billing
 - [ ] Endpoints:
   - `POST /api/v1/crypto/key-exchange` (ML-KEM encapsulate/decapsulate)
-  - `POST /api/v1/crypto/sign` (ML-DSA-65 firma)
+  - `POST /api/v1/crypto/sign` (ML-DSA-65 con `key_id` administrado por Nivo/KMS/HSM; nunca llave privada en request)
   - `POST /api/v1/crypto/verify` (verificación de firma)
   - `POST /api/v1/crypto/hybrid-encrypt` (AES-GCM con llave híbrida)
+- [ ] SDK con modo client-side signing para clientes BYOK que no delegan firma a Nivo
 - [ ] SDK Python y Node.js (open source en GitHub)
 - [ ] Documentación API completa (Swagger + guías de integración)
 - [ ] Dashboard de uso para clientes B2B (métricas de operaciones)
@@ -223,7 +232,9 @@ Mes 1–4       Mes 5–8         Mes 9–12        Año 2
 - [ ] Cambio de divisas in-app (spread 0.5%–1.5%) con IMC/banco/partner aprobado
 - [ ] Finanzas personales: categorización automática de gastos
 - [ ] Detección de fraude ML Fase 1 (modelos de comportamiento)
-- [ ] Diseño técnico/legal de módulos crypto y acciones (sin lanzamiento público hasta partner aprobado)
+- [ ] Piloto cerrado de crypto con exchange/VASP aliado: compra/venta, límites, disclosure, AML reforzado
+- [ ] Piloto cerrado de acciones/ETFs con broker/comisionista aliado: órdenes firmadas, suitability/appropriateness si aplica, sin asesoría propia
+- [ ] Diseño de ruta Nivo Bank: banco aliado, SEDPE, COT o licencia futura según tracción
 
 **Compliance:**
 - [ ] Auditoría PQC externa (firma de ciberseguridad certificada)
@@ -253,6 +264,8 @@ Mes 1–4       Mes 5–8         Mes 9–12        Año 2
 - [ ] Licencia operativa en Ecuador y Perú
 - [ ] Lanzamiento controlado de crypto compra/venta vía exchange/VASP aliado
 - [ ] Lanzamiento controlado de acciones/ETFs vía broker/comisionista partner
+- [ ] Decisión formal de Nivo Bank Colombia: SEDPE propia, COT/Sandbox, banco aliado profundo o adquisición/alianza regulada
+- [ ] Ahorro real con saldos/subcuentas si existe cobertura regulatoria; si no, mantener bolsillos visuales y partner ledger
 - [ ] Prototipo cerrado de agentes de portafolio: el usuario asigna una parte limitada, ve claramente que opera un agente automatizado y acepta que puede ganar o perder dinero
 - [ ] 250,000 usuarios activos multi-país
 - [ ] API B2B con 10+ clientes enterprise
@@ -294,12 +307,12 @@ Mes 1–4       Mes 5–8         Mes 9–12        Año 2
 | Etapa | Acción | Tiempo | Validación |
 |-------|--------|--------|------------|
 | Validación | Definir MVP sin captación directa + ruta Sandbox/COT si aplica | Mes 1–2 | Memo legal aprobado |
-| Producto | App P2P con PQC híbrido + KYC externo | Mes 2–4 | 500 beta users sin incidentes |
+| Producto | Cuenta Nivo con pagos, ahorro visual, PQC híbrido + KYC externo | Mes 2–4 | 500 beta users sin incidentes |
 | Primeros usuarios | Red personal + comunidades colombianas en exterior | Mes 3–5 | 1,000 transacciones firmadas |
 | Monetización | Tarjeta virtual con aliado + API PQC B2B | Mes 6–9 | Primer MRR |
 | Multi-moneda | COP/USD/EUR con aliado IMC/banco | Mes 9–12 | FX funcional sin ser IMC propio |
-| Inversiones | Crypto y acciones vía partners | Año 2 | Contratos, disclosures y AML reforzado |
-| Escalabilidad | Decidir SEDPE formal, banco aliado o expansión regional | Año 2 | Compliance y unit economics listos |
+| Inversiones | Crypto y acciones vía partners en piloto controlado | Mes 9–24 | Contratos, disclosures y AML reforzado |
+| Escalabilidad | Decidir SEDPE formal, banco aliado o expansión regional | Año 2 | Compliance, unit economics y deseo bancario validados |
 
 ---
 

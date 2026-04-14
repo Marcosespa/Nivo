@@ -233,20 +233,43 @@ Solo se habilita balance custodial propio cuando legal confirme SEDPE, Certifica
 **Estado:** Aprobado ✅ — visión Año 1/Año 2
 
 **Contexto:**
-La visión de producto incluye cambio de monedas, crypto y acciones. Esos productos tocan tres mundos regulatorios distintos: cambiario, valores y criptoactivos. Si Nivo intenta operar todo con licencia propia desde el inicio, el roadmap se vuelve inviable.
+La visión de producto incluye ahorro, cambio de monedas, crypto y acciones. Esos productos tocan mundos regulatorios distintos: captación/depósitos, cambiario, valores y criptoactivos. Si Nivo intenta operar todo con licencia propia desde el inicio, el roadmap se vuelve inviable.
 
 **Decisión:**
-Nivo será la interfaz, capa de seguridad, firma, auditoría, antifraude y conciliación. La ejecución y custodia de FX, acciones y crypto vive en partners especializados:
+Nivo será la interfaz bancaria, capa de seguridad, firma, auditoría, antifraude y conciliación. La ejecución y custodia de ahorro real, FX, acciones y crypto vive en partners especializados hasta que Nivo tenga licencia propia:
+- Ahorro/saldos: banco aliado, SEDPE, COT o subcuentas/cuentas del proveedor.
 - FX: IMC, banco o aliado cambiario.
 - Acciones/ETFs: broker/comisionista o broker internacional validado legalmente.
 - Crypto: exchange/VASP aliado, separado del saldo de pagos.
 
 **Implicaciones técnicas:**
+- Los bolsillos de ahorro pueden existir como metas visuales desde MVP; si representan saldos reales, deben mapear a una cuenta/subcuenta del partner o licencia aplicable.
 - Cada orden de FX/inversión/crypto se firma con ML-DSA antes de enviarse al partner.
 - La tabla de órdenes almacena `partner`, `partner_order_id`, `instrument_type`, `execution_status`, `risk_disclosure_version` y hash del disclosure aceptado.
 - Los balances de inversión son snapshots informativos desde el partner; Nivo no es book of record.
 - El motor AML/fraude aumenta controles para crypto: velocity limits, device fingerprint, listas, travel-rule readiness y monitoreo de patrones.
 - No se implementan recomendaciones de inversión ni copy-trading en el MVP.
+
+---
+
+### ADR-009: PQC para todos y API B2B sin llaves privadas entrantes
+
+**Estado:** Aprobado ✅
+
+**Contexto:**
+La promesa de Nivo es que todos los usuarios, no solo bancos o clientes enterprise, reciban protección post-cuántica. Al mismo tiempo, la API B2B no puede pedir ni recibir llaves privadas de clientes porque eso destruye el modelo de confianza.
+
+**Decisión:**
+- La app B2C usa "blindaje cuántico activo" como parte visible de pagos, recibos, sesiones y órdenes.
+- La API B2B soporta verificación, emisión de recibos, key exchange y firma server-side solo con llaves administradas por Nivo/KMS/HSM o con material explícitamente provisionado mediante flujo BYOK seguro.
+- Los clientes B2B que quieran firmar con sus propias llaves deben hacerlo client-side o mediante KMS/HSM controlado por ellos. Nivo puede verificar firmas y registrar evidencias, pero no debe recibir llaves privadas por request.
+- Toda API key B2B se guarda hasheada, con scopes, límites, rotación, auditoría y billing.
+
+**Implicaciones técnicas:**
+- El endpoint público `POST /api/v1/crypto/sign` no acepta `signing_key_hex`.
+- Se introduce `key_id`, `client_id`, scopes (`sign`, `verify`, `receipt`, `kem`) y logs inmutables.
+- Las respuestas nunca devuelven `shared_secret_hex` en producción; solo ciphertext, public keys efímeras y metadatos necesarios.
+- Los SDKs deben incluir modo client-side signing para clientes que no quieran delegar firma a Nivo.
 
 ---
 
@@ -304,6 +327,21 @@ CREATE TABLE wallets (
     provider_account_ref VARCHAR(120),         -- cuenta/token del aliado regulado
     is_frozen BOOLEAN DEFAULT FALSE,
     last_updated TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Bolsillos de ahorro: metas visuales o subcuentas de partner/licencia
+CREATE TABLE savings_pockets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id),
+    name VARCHAR(80) NOT NULL,
+    target_amount_cop BIGINT,
+    display_balance_cop BIGINT DEFAULT 0,
+    mode VARCHAR(30) DEFAULT 'visual_goal',     -- visual_goal/partner_subaccount/custodial
+    provider_subaccount_ref VARCHAR(120),
+    ml_dsa_last_state_signature BYTEA,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT positive_pocket_balance CHECK (display_balance_cop >= 0)
 );
 
 -- Órdenes reguladas por partner: FX, acciones, ETFs, crypto

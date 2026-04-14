@@ -51,7 +51,7 @@ Nivo/
 │   │   └── crypto/            ← Módulo PQC (liboqs wrapper)
 │   └── tests/
 ├── frontend/                  ← React Native (móvil)
-├── LANDING PAGE/nivo/         ← Landing web pública
+├── landing_page/nivo/         ← Landing web pública
 ├── infra/
 │   ├── terraform/             ← IaC para GCP + Cloudflare
 │   └── docker/                ← Dockerfiles y compose

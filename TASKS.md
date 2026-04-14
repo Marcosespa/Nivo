@@ -22,6 +22,434 @@
 
 ---
 
+## SPRINT 0 — Correcciones de Alineación (Antes de cualquier implementación)
+> Estas tareas corrigen bugs, vulnerabilidades de seguridad e inconsistencias detectadas
+> en la revisión del código base existente. **Deben completarse antes de TASK-001.**
+> No son features nuevas — son pre-condiciones para que el stack arranque limpio y seguro.
+
+---
+
+### FIX-001 — Corregir bug `init_db()` en `database.py` (SQLAlchemy 2.0)
+**Estado:** [ ] PENDING
+**Agente sugerido:** backend
+**Estimado:** 30 minutos
+**Prioridad:** CRÍTICA — la app no arranca correctamente sin este fix
+
+**Descripción:**
+`init_db()` llama `c.text()` dentro de `run_sync`, que no existe en SQLAlchemy 2.0.
+Lanza `AttributeError` en el startup. Adicionalmente, `sessionmaker` está deprecado
+en SQLAlchemy 2.x y debe reemplazarse por `async_sessionmaker`.
+
+**Archivos a modificar:**
+- MODIFICAR `backend/app/core/database.py`
+
+**Cambios exactos:**
+
+```python
+# ANTES (incorrecto en SQLAlchemy 2.0):
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+
+AsyncSessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(lambda c: c.execute(c.text("SELECT 1")))
+
+# DESPUÉS (correcto):
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase
+
+AsyncSessionLocal = async_sessionmaker(
+    engine,
+    expire_on_commit=False,
+)
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.execute(text("SELECT 1"))
+    print("✅ Base de datos conectada")
+```
+
+**Criterios de éxito:**
+- [ ] `uvicorn app.main:app --reload` arranca sin `AttributeError` en `init_db`
+- [ ] `python -c "from app.core.database import AsyncSessionLocal; print(type(AsyncSessionLocal))"` muestra `async_sessionmaker`
+- [ ] El log muestra `✅ Base de datos conectada` al arrancar
+
+**Dependencias:** Ninguna
+
+---
+
+### FIX-002 — Eliminar `shared_secret_hex` de `KeyExchangeResponse` (Vulnerabilidad crítica de seguridad)
+**Estado:** [ ] PENDING
+**Agente sugerido:** backend
+**Estimado:** 30 minutos
+**Prioridad:** CRÍTICA — exponer el shared secret invalida toda la protección de ML-KEM
+
+**Descripción:**
+`KeyExchangeResponse` incluye `shared_secret_hex` con el comentario "SOLO para debug".
+El shared secret ES la llave de sesión AES-256-GCM. Retornarlo en el response lo expone
+a cualquier intermediario, log, proxy o atacante que capture la respuesta. Destruye
+la seguridad que ML-KEM-768 debería proveer. Este campo debe eliminarse del response
+en todos los ambientes, incluso en desarrollo.
+
+**Archivo a modificar:**
+- MODIFICAR `backend/app/api/v1/crypto.py`
+
+**Cambios exactos:**
+
+```python
+# ELIMINAR este campo del modelo:
+class KeyExchangeResponse(BaseModel):
+    pqc_ciphertext_hex: str
+    classical_public_key_hex: str
+    algorithm: str = "ML-KEM-768 + X25519 (hybrid)"
+    # shared_secret_hex: str  ← ELIMINAR COMPLETAMENTE, nunca retornar
+
+# El endpoint /key-exchange debe retornar SOLO los datos que el receptor necesita
+# para derivar el mismo secreto. El shared_secret se usa internamente (AES-GCM)
+# y nunca viaja por la red.
+```
+
+**Criterios de éxito:**
+- [ ] `KeyExchangeResponse` no tiene ningún campo con `secret` en el nombre
+- [ ] El endpoint `/api/v1/crypto/key-exchange` no retorna el secreto compartido
+- [ ] `grep -r "shared_secret_hex" backend/app/api/` retorna vacío
+
+**Dependencias:** Ninguna
+
+---
+
+### FIX-003 — Eliminar `signing_key_hex` de `SignRequest` (Vulnerabilidad crítica de seguridad)
+**Estado:** [ ] PENDING
+**Agente sugerido:** backend
+**Estimado:** 2–3 horas
+**Prioridad:** CRÍTICA — aceptar llaves privadas vía API es un patrón de seguridad roto
+
+**Descripción:**
+`SignRequest` en `crypto.py` acepta `signing_key_hex` (llave privada ML-DSA-65) en el
+body del request. Esto viola el ADR-002 y TASKS TASK-021 que explícitamente prohíbe
+que llaves privadas viajen por la API. Un atacante con acceso a los logs, un proxy,
+o una vulnerabilidad de transporte obtiene la llave privada del cliente.
+
+La corrección temporal (hasta que TASK-021 implemente el sistema completo de `key_id`)
+es rediseñar el endpoint para que genere un keypair efímero del lado del servidor,
+firme los datos, y retorne la firma junto con la llave **pública** (no privada) para
+que el llamador pueda verificar. El cliente que necesite BYOK debe usar el SDK
+client-side (ver TASK-029) y nunca enviar su llave privada al servidor.
+
+**Archivo a modificar:**
+- MODIFICAR `backend/app/api/v1/crypto.py`
+
+**Cambios exactos:**
+
+```python
+# ANTES (inseguro — acepta llave privada en el request):
+class SignRequest(BaseModel):
+    data_hex: str
+    signing_key_hex: str    # ← NUNCA. Llave privada viajando por la red.
+
+# DESPUÉS (seguro — servidor firma con llave efímera o key_id):
+class SignRequest(BaseModel):
+    data_hex: str
+    # key_id: str | None = None  # Futuro: apunta a llave en KMS/HSM (TASK-021)
+    # Por ahora: el servidor genera un keypair efímero y firma
+    # El cliente recibe firma + public_key para verificación independiente
+
+class SignResponse(BaseModel):
+    signature_hex: str
+    public_key_hex: str          # ← Llave PÚBLICA para que el llamador verifique
+    public_key_fingerprint: str
+    algorithm: str = "ML-DSA-65"
+    # Nota: en TASK-021 esto se reemplaza por key_id + KMS/HSM real
+
+# El endpoint debe además rechazar cualquier campo que suene a llave privada:
+# signing_key_hex, secret_key_hex, private_key_hex → retornar 400
+```
+
+**Criterios de éxito:**
+- [ ] `SignRequest` no tiene ningún campo con `secret_key` o `signing_key` o `private_key`
+- [ ] `POST /api/v1/crypto/sign` con `{"data_hex": "...", "signing_key_hex": "..."}` retorna `400 Bad Request`
+- [ ] `POST /api/v1/crypto/sign` con solo `data_hex` retorna firma válida + llave pública
+- [ ] La firma retornada puede verificarse con `/api/v1/crypto/verify` usando la `public_key_hex` del response
+- [ ] `grep -r "signing_key_hex" backend/app/` retorna vacío
+
+**Dependencias:** Ninguna (fix inmediato; TASK-021 reemplazará esto con key_id completo)
+
+---
+
+### FIX-004 — Conectar algoritmos PQC desde `settings` en `CryptoService` (Crypto-agility)
+**Estado:** [ ] PENDING
+**Agente sugerido:** backend
+**Estimado:** 30 minutos
+**Prioridad:** ALTA — viola ADR-002 (crypto-agility)
+
+**Descripción:**
+`CryptoService` tiene los algoritmos hardcodeados como constantes de clase:
+```python
+KEM_ALGORITHM = "ML-KEM-768"
+SIG_ALGORITHM = "ML-DSA-65"
+```
+El ADR-002 establece que si NIST cambia el estándar, solo se modifica `service.py`.
+Pero si están hardcodeados, cambiar el algoritmo requiere editar código, no solo config.
+Asimismo, `health.py` hardcodea `"algorithm_sig": "ML-DSA-65"` en lugar de leer de settings.
+
+**Archivos a modificar:**
+- MODIFICAR `backend/app/crypto/service.py`
+- MODIFICAR `backend/app/api/v1/health.py`
+
+**Cambios exactos:**
+
+```python
+# service.py — leer de settings en __init__:
+from app.core.config import settings
+
+class CryptoService:
+    def __init__(self):
+        self.KEM_ALGORITHM = settings.PQC_ALGORITHM           # "ML-KEM-768"
+        self.SIG_ALGORITHM = settings.PQC_SIGNATURE_ALGORITHM  # "ML-DSA-65"
+        self._liboqs_available = LIBOQS_AVAILABLE
+
+# health.py — leer de settings:
+return {
+    "algorithm_kem": settings.PQC_ALGORITHM,
+    "algorithm_sig": settings.PQC_SIGNATURE_ALGORITHM,  # no hardcodear
+    ...
+}
+```
+
+**Criterios de éxito:**
+- [ ] Cambiar `PQC_ALGORITHM=ML-KEM-1024` en `.env` y reiniciar refleja el cambio en `/health/pqc`
+- [ ] `CryptoService` no tiene ninguna constante de clase con nombre de algoritmo hardcodeado
+- [ ] `grep -n "ML-KEM-768\|ML-DSA-65" backend/app/crypto/service.py` retorna solo comentarios, nunca strings asignados a variables
+
+**Dependencias:** Ninguna
+
+---
+
+### FIX-005 — Inyectar sesión de BD en routers (`payments.py`, `users.py`, `auth.py`)
+**Estado:** [ ] PENDING
+**Agente sugerido:** backend
+**Estimado:** 1–2 horas
+**Prioridad:** ALTA — sin esto, ningún endpoint puede leer ni escribir en la BD
+
+**Descripción:**
+Los routers de pagos, usuarios y autenticación no tienen acceso a la sesión de base
+de datos. Ninguno inyecta `db: AsyncSession = Depends(get_db)`. Cuando TASK-001 cree
+los modelos ORM, los endpoints seguirán sin poder usarlos porque no tienen la sesión.
+Esto debe corregirse ahora para que TASK-002 y TASK-003 puedan implementarse correctamente.
+
+**Archivos a modificar:**
+- MODIFICAR `backend/app/api/v1/payments.py`
+- MODIFICAR `backend/app/api/v1/users.py`
+- MODIFICAR `backend/app/api/v1/auth.py`
+
+**Patrón correcto a aplicar en cada endpoint que acceda a BD:**
+
+```python
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database import get_db
+
+@router.post("/initiate")
+async def initiate_payment(
+    request: PaymentInitiateRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),   # ← inyectar sesión
+) -> PaymentInitiateResponse:
+    ...
+```
+
+**Nota:** Los endpoints que aún tienen lógica mock (TODO) deben recibir `db` como
+parámetro aunque no lo usen todavía — así cuando TASK-002/003 implementen la lógica
+real, la firma del endpoint ya es correcta y no rompe contratos.
+
+**Criterios de éxito:**
+- [ ] Todos los endpoints de `payments.py` reciben `db: AsyncSession = Depends(get_db)`
+- [ ] Todos los endpoints de `users.py` que acceden a datos reciben `db`
+- [ ] Todos los endpoints de `auth.py` reciben `db`
+- [ ] `python -c "from app.api.v1.payments import router; print('OK')"` sin errores de importación
+
+**Dependencias:** FIX-001 (database.py debe estar correcto primero)
+
+---
+
+### FIX-006 — Agregar campos regulatorios a modelo `Transaction` Pydantic
+**Estado:** [ ] PENDING
+**Agente sugerido:** backend
+**Estimado:** 30 minutos
+**Prioridad:** ALTA — sin estos campos la conciliación con el aliado regulado es imposible
+
+**Descripción:**
+El modelo Pydantic `Transaction` en `models/transaction.py` no tiene los campos
+`rail`, `provider_reference`, ni `settlement_status`. Estos son obligatorios por
+arquitectura regulatoria: Nivo debe rastrear qué rail procesó cada pago, con qué
+referencia del proveedor, y cuál es el estado de liquidación. Sin esto, la conciliación
+es imposible y el modelo ORM (TASK-001) ya los especifica — el Pydantic debe estar alineado.
+
+**Archivo a modificar:**
+- MODIFICAR `backend/app/models/transaction.py`
+
+**Campos a agregar:**
+
+```python
+from enum import Enum
+from typing import Literal
+
+class SettlementRail(str, Enum):
+    PSE = "pse"
+    ACH = "ach"
+    BANK_PARTNER = "bank_partner"
+    INTERNAL = "internal"  # para simulaciones y desarrollo
+
+class SettlementStatus(str, Enum):
+    PENDING = "pending"
+    SETTLED = "settled"
+    FAILED = "failed"
+    REVERSED = "reversed"
+
+class Transaction(BaseModel):
+    id: str
+    sender_id: str
+    receiver_id: str
+    amount_cop: int
+    status: TransactionStatus
+    ml_dsa_signature: bytes
+    signature_key_id: str
+    message: str | None = None
+    # Campos regulatorios — obligatorios para conciliación:
+    rail: SettlementRail = SettlementRail.INTERNAL
+    provider_reference: str | None = None      # ID de la transacción en el aliado (PSE ref, ACH ref)
+    settlement_status: SettlementStatus = SettlementStatus.PENDING
+    created_at: datetime
+    confirmed_at: datetime | None = None
+
+    @property
+    def amount_display(self) -> str:
+        return f"${self.amount_cop / 100:,.0f} COP"
+```
+
+**Criterios de éxito:**
+- [ ] `python -c "from app.models.transaction import Transaction; print(Transaction.model_fields.keys())"` muestra `rail`, `provider_reference`, `settlement_status`
+- [ ] Los campos en `Transaction` Pydantic coinciden con las columnas del ORM en TASK-001
+- [ ] `PaymentConfirmResponse` en `payments.py` retorna `settlement_status` y `provider_reference`
+
+**Dependencias:** Ninguna
+
+---
+
+### FIX-007 — Corregir URLs en CORS y `ALLOWED_HOSTS` (mayúsculas en dominios)
+**Estado:** [ ] PENDING
+**Agente sugerido:** backend
+**Estimado:** 15 minutos
+**Prioridad:** MEDIA — en producción rompe requests legítimos cross-origin
+
+**Descripción:**
+Las URLs en `config.py` tienen `Nivo` con mayúscula: `"https://Nivo.co"`, `"https://app.Nivo.co"`.
+Los dominios en URLs son case-sensitive en los headers HTTP. El browser envía el header
+`Origin: https://nivo.co` (minúsculas) y el CORS middleware lo rechazará porque no
+coincide con `"https://Nivo.co"`. Mismo problema con `ALLOWED_HOSTS`.
+
+**Archivo a modificar:**
+- MODIFICAR `backend/app/core/config.py`
+
+**Cambios exactos:**
+
+```python
+# ANTES:
+ALLOWED_ORIGINS: list[str] = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://Nivo.co",        # ← mayúscula incorrecta
+    "https://app.Nivo.co",    # ← mayúscula incorrecta
+]
+ALLOWED_HOSTS: list[str] = ["Nivo.co", "api.Nivo.co"]  # ← mayúsculas incorrectas
+
+# DESPUÉS:
+ALLOWED_ORIGINS: list[str] = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://nivo.co",
+    "https://app.nivo.co",
+]
+ALLOWED_HOSTS: list[str] = ["nivo.co", "api.nivo.co"]
+```
+
+**Criterios de éxito:**
+- [ ] `grep -n "Nivo\.co" backend/app/core/config.py` retorna vacío (solo minúsculas)
+- [ ] Un request con `Origin: https://nivo.co` pasa el CORS middleware en producción
+
+**Dependencias:** Ninguna
+
+---
+
+### FIX-008 — Corregir orden de rutas y agregar `/history` en `payments.py`
+**Estado:** [ ] PENDING
+**Agente sugerido:** backend
+**Estimado:** 30 minutos
+**Prioridad:** MEDIA — el router actual tiene `GET /` donde debería ser `GET /history`
+
+**Descripción:**
+En FastAPI, las rutas se evalúan en orden de declaración. El historial de transacciones
+está en `GET /` pero el roadmap requiere `GET /history`. Si se agrega `GET /history`
+después de `GET /{tx_id}`, FastAPI lo captura como `tx_id = "history"` antes de llegar
+al endpoint correcto. La ruta actual `GET /` también es ambigua y confusa para los clientes.
+
+Adicionalmente, `GET /` como lista de recursos no sigue REST semántico; debe ser
+`GET /history` o `GET /` documentado explícitamente.
+
+**Archivo a modificar:**
+- MODIFICAR `backend/app/api/v1/payments.py`
+
+**Orden correcto de declaración de rutas:**
+
+```python
+# 1. Rutas estáticas primero (antes de cualquier /{param}):
+@router.post("/initiate", ...)
+@router.post("/confirm", ...)
+@router.get("/history", ...)     # ← mover aquí, ANTES de /{tx_id}
+
+# 2. Rutas dinámicas al final:
+@router.get("/{tx_id}", ...)     # ← siempre al final
+```
+
+**Criterios de éxito:**
+- [ ] `GET /api/v1/payments/history` retorna el historial (no un 404 de tx_id no encontrado)
+- [ ] `GET /api/v1/payments/{uuid}` sigue funcionando para consultas individuales
+- [ ] No existe `GET /` en el router de payments (reemplazado por `/history`)
+
+**Dependencias:** Ninguna
+
+---
+
+### FIX-009 — Eliminar entrada duplicada de `httpx` en `requirements.txt`
+**Estado:** [ ] PENDING
+**Agente sugerido:** backend
+**Estimado:** 5 minutos
+**Prioridad:** BAJA — no rompe nada pero es ruido que puede confundir en auditorías
+
+**Descripción:**
+`httpx==0.27.2` aparece dos veces en `requirements.txt` (línea 38 y línea 52).
+`pip` lo instala bien, pero genera advertencias en algunos entornos y confunde
+en code reviews y auditorías de dependencias.
+
+**Archivo a modificar:**
+- MODIFICAR `backend/requirements.txt`
+
+**Cambio:** Eliminar la segunda aparición de `httpx==0.27.2` (la que está en la
+sección `Dev / Testing`). Mantener la que está en `HTTP Client`.
+
+**Criterios de éxito:**
+- [ ] `grep -c "httpx" backend/requirements.txt` retorna `1`
+- [ ] `pip install -r requirements.txt` no muestra warnings de duplicados
+
+**Dependencias:** Ninguna
+
+---
+
 ## MES 1 — SPRINT 1 (Semanas 1–2): Fundaciones Técnicas
 
 ---
@@ -39,8 +467,11 @@ con relaciones, constraints, e índices.
 
 **Archivos a crear/modificar:**
 - CREAR `backend/app/models/orm/user.py` — Modelo SQLAlchemy de usuarios
-- CREAR `backend/app/models/orm/wallet.py` — Modelo SQLAlchemy de billeteras
+- CREAR `backend/app/models/orm/wallet.py` — Modelo SQLAlchemy de billeteras/cuenta visual
+- CREAR `backend/app/models/orm/savings_pocket.py` — Bolsillos de ahorro/metas
 - CREAR `backend/app/models/orm/transaction.py` — Modelo SQLAlchemy de transacciones
+- CREAR `backend/app/models/orm/partner_order.py` — Órdenes FX/crypto/acciones por partner
+- CREAR `backend/app/models/orm/product_disclosure.py` — Versiones de disclosures aceptados
 - CREAR `backend/app/models/orm/pqc_key.py` — Modelo SQLAlchemy de llaves PQC
 - CREAR `backend/app/models/orm/merchant.py` — Modelo SQLAlchemy de comercios
 - CREAR `backend/app/models/orm/otp.py` — Modelo SQLAlchemy de OTPs (con TTL)
@@ -65,11 +496,43 @@ updated_at: TIMESTAMPTZ DEFAULT NOW()
 # wallets
 id: UUID PK
 user_id: UUID FK -> users.id UNIQUE
-balance_cop: BIGINT DEFAULT 0  # centavos
+display_balance_cop: BIGINT DEFAULT 0  # cache visual en centavos; no ledger legal si MVP sin custodia
 currency: VARCHAR(3) DEFAULT 'COP'
+custody_mode: ENUM('visual_only','partner_ledger','sedpe','bank_partner') DEFAULT 'visual_only'
+provider_account_ref: VARCHAR(120) NULLABLE
 is_frozen: BOOLEAN DEFAULT FALSE
 last_updated: TIMESTAMPTZ DEFAULT NOW()
-CONSTRAINT: balance_cop >= 0
+CONSTRAINT: display_balance_cop >= 0
+
+# savings_pockets
+id: UUID PK
+user_id: UUID FK -> users.id
+name: VARCHAR(80) NOT NULL
+target_amount_cop: BIGINT NULLABLE
+display_balance_cop: BIGINT DEFAULT 0
+provider_subaccount_ref: VARCHAR(120) NULLABLE  # solo si banco/SEDPE/partner soporta subcuentas reales
+mode: ENUM('visual_goal','partner_subaccount','custodial') DEFAULT 'visual_goal'
+ml_dsa_last_state_signature: BYTEA NULLABLE
+created_at: TIMESTAMPTZ DEFAULT NOW()
+
+# partner_orders
+id: UUID PK
+user_id: UUID FK -> users.id
+product_type: ENUM('fx','crypto','stock','etf') NOT NULL
+partner: VARCHAR(80) NOT NULL
+partner_order_id: VARCHAR(120) NULLABLE
+instrument_symbol: VARCHAR(30) NOT NULL
+side: ENUM('buy','sell','convert') NOT NULL
+notional_amount: BIGINT NOT NULL
+source_currency: VARCHAR(10)
+target_currency: VARCHAR(10)
+execution_status: ENUM('pending','submitted','executed','failed','cancelled') DEFAULT 'pending'
+risk_disclosure_version: VARCHAR(30) NOT NULL
+accepted_disclosure_hash: VARCHAR(64) NOT NULL
+signed_order_payload: BYTEA NOT NULL
+ml_dsa_signature: BYTEA NOT NULL
+created_at: TIMESTAMPTZ DEFAULT NOW()
+executed_at: TIMESTAMPTZ NULLABLE
 
 # transactions
 id: UUID PK
@@ -124,7 +587,9 @@ INDEX: (phone_number, expires_at)
 - [ ] `python -c "from app.models.orm.user import User; print('OK')"` no lanza errores
 - [ ] `alembic upgrade head` crea todas las tablas sin errores
 - [ ] Todas las foreign keys tienen `ondelete="CASCADE"` o `ondelete="RESTRICT"` explícito
-- [ ] El constraint `balance_cop >= 0` está en la BD (no solo en Python)
+- [ ] El constraint `display_balance_cop >= 0` está en la BD (no solo en Python)
+- [ ] `wallets.custody_mode` permite distinguir meta visual, ledger de partner, banco aliado y SEDPE
+- [ ] `partner_orders` puede registrar FX, crypto, acciones y ETFs sin convertir a Nivo en broker/exchange propio
 
 **Dependencias:** Ninguna
 
@@ -187,15 +652,17 @@ access + refresh tokens, blacklist en Redis, y la dependencia `get_current_user`
 
 ---
 
-### TASK-003 — Implementar Sistema de Wallets y Transacciones Atómicas
+### TASK-003 — Implementar Cuenta Nivo, Wallet Visual y Transacciones Atómicas
 **Estado:** [ ] PENDING
 **Agente sugerido:** backend
 **Estimado:** 8–10 horas
 **Prioridad:** CRÍTICA
 
 **Descripción:**
-Implementar el core financiero: saldo real, transacciones P2P atómicas con PostgreSQL,
-integración con el módulo PQC para firma de transacciones, y flujo completo de pago.
+Implementar el core financiero inicial: cuenta Nivo, wallet visual, referencias de partner,
+transacciones P2P atómicas, integración con el módulo PQC para firma de transacciones,
+y flujo completo de pago. En MVP sin licencia propia, `wallets` no es el ledger legal:
+guarda estado visual, límites, `custody_mode` y referencias del proveedor regulado.
 
 **Archivos a crear/modificar:**
 - CREAR `backend/app/services/wallet_service.py` — Operaciones de billetera
@@ -221,14 +688,17 @@ async def execute_payment(
 
     Pasos:
     1. SELECT sender_wallet FOR UPDATE  (lock para evitar race condition)
-    2. Verificar balance >= amount_cop (lanzar InsufficientFundsError si no)
+    2. Verificar disponibilidad según custody_mode:
+       - visual_only: consultar/validar contra provider o rechazar ejecución real
+       - partner_ledger/bank_partner/sedpe: validar saldo/referencia autorizada
     3. Verificar límites diarios del usuario (según plan)
-    4. UPDATE sender_wallet SET balance = balance - amount_cop
-    5. UPDATE receiver_wallet SET balance = balance + amount_cop
+    4. Enviar instrucción al rail/partner configurado y obtener provider_reference
+    5. Actualizar display_balance_cop solo como cache/estado visual post-conciliación
     6. Construir payload de tx para firma PQC:
        payload = f"tx:{tx_id}|sender:{sender_id}|receiver:{receiver_id}|amount:{amount_cop}|ts:{now_iso}"
     7. Firmar payload con ML-DSA-65 (llave del servidor, no del usuario en MVP)
     8. INSERT INTO transactions (id, sender_id, receiver_id, amount_cop, status='completed',
+                                  rail, provider_reference, settlement_status,
                                   ml_dsa_signature, signature_key_id, confirmed_at=now)
     9. COMMIT
     10. (post-commit) Enviar push notification al receptor
@@ -239,6 +709,8 @@ class InsufficientFundsError(Exception): ...
 class DailyLimitExceededError(Exception): ...
 class ReceiverNotFoundError(Exception): ...
 class WalletFrozenError(Exception): ...
+class PartnerSettlementError(Exception): ...
+class CustodyModeNotExecutableError(Exception): ...
 ```
 
 **Verificaciones de límites diarios:**
@@ -251,9 +723,10 @@ Calcular: SUM(amount_cop) WHERE sender_id=? AND created_at >= today_start AND st
 
 **Criterios de éxito:**
 - [ ] Pago P2P completo en < 800ms (medir con `time.perf_counter()`)
-- [ ] Si el emisor no tiene saldo, retorna 422 con mensaje en español
+- [ ] Si el emisor no tiene disponibilidad confirmada por el partner, retorna 422 con mensaje en español
 - [ ] Si hay race condition (dos pagos simultáneos con saldo justo), exactamente uno falla
 - [ ] La firma ML-DSA-65 se almacena en la BD para cada transacción
+- [ ] Cada transacción completada guarda `rail`, `provider_reference` y `settlement_status`
 - [ ] El historial paginado retorna transacciones con su `ml_dsa_signature_fingerprint`
 
 **Dependencias:** TASK-001, TASK-002
@@ -1095,16 +1568,16 @@ PaymentReceivedAlert:
 **Prioridad:** ALTA
 
 **Descripción:**
-Completar la landing page existente en `LANDING PAGE/nivo/`:
+Completar la landing page existente en `landing_page/nivo/`:
 agregar sección de pricing, sección de testimonios, formulario de lista de espera beta,
 y optimizar para móvil.
 
 **Archivos a modificar/crear:**
-- MODIFICAR `LANDING PAGE/nivo/src/pages/home.tsx` — Agregar nuevas secciones
-- CREAR `LANDING PAGE/nivo/src/sections/pricing.tsx` — Planes y precios
-- CREAR `LANDING PAGE/nivo/src/sections/waitlist.tsx` — Formulario de beta
-- CREAR `LANDING PAGE/nivo/src/sections/social-proof.tsx` — Logos y números
-- MODIFICAR `LANDING PAGE/nivo/src/sections/flywheel.tsx` — Ya tiene CTA, mejorar
+- MODIFICAR `landing_page/nivo/src/pages/home.tsx` — Agregar nuevas secciones
+- CREAR `landing_page/nivo/src/sections/pricing.tsx` — Planes y precios
+- CREAR `landing_page/nivo/src/sections/waitlist.tsx` — Formulario de beta
+- CREAR `landing_page/nivo/src/sections/social-proof.tsx` — Logos y números
+- MODIFICAR `landing_page/nivo/src/sections/flywheel.tsx` — Ya tiene CTA, mejorar
 
 **Sección de Pricing:**
 ```
@@ -1261,13 +1734,16 @@ async def notify_fraud_alert(user_id, transaction_details):
 
 **Descripción:**
 El router `app/api/v1/crypto.py` existe pero está incompleto. Implementar el sistema
-completo de API keys B2B con billing, rate limiting por tier, y dashboard.
+completo de API keys B2B con scopes, billing, rate limiting por tier, dashboard y
+modelo seguro de llaves. La API pública NO debe aceptar llaves privadas en requests.
 
 **Archivos a crear/modificar:**
 - MODIFICAR `backend/app/api/v1/crypto.py` — Completar todos los endpoints
 - CREAR `backend/app/models/orm/api_client.py` — Clientes B2B
 - CREAR `backend/app/models/orm/api_usage.py` — Registro de uso para billing
+- CREAR `backend/app/models/orm/api_key_material.py` — Referencias a llaves administradas/KMS/HSM
 - CREAR `backend/app/services/api_key_service.py` — Gestión de API keys
+- CREAR `backend/app/services/key_management_service.py` — Gestión de `key_id`, rotación y BYOK seguro
 - CREAR `backend/app/api/v1/b2b_dashboard.py` — Dashboard B2B
 
 **Tabla api_clients:**
@@ -1276,8 +1752,20 @@ id: UUID PK
 organization_name: VARCHAR(255) NOT NULL
 contact_email: VARCHAR(255) UNIQUE NOT NULL
 api_key_hash: VARCHAR(64) NOT NULL  -- SHA-256 del API key, nunca el key en plano
+scopes: JSONB NOT NULL              -- ["kem","sign","verify","receipt"]
 tier: ENUM('starter','growth','enterprise') DEFAULT 'starter'
 monthly_limit: INTEGER DEFAULT 100000  -- operaciones/mes
+is_active: BOOLEAN DEFAULT TRUE
+created_at: TIMESTAMPTZ DEFAULT NOW()
+
+api_key_material:
+id: UUID PK
+client_id: UUID FK -> api_clients.id
+key_id: VARCHAR(120) UNIQUE NOT NULL          -- referencia KMS/HSM/Vault, no secreto en BD
+algorithm: VARCHAR(30) NOT NULL               -- ML-DSA-65, ML-KEM-768
+public_key: BYTEA NOT NULL
+key_fingerprint: VARCHAR(64) NOT NULL
+management_mode: ENUM('nivo_managed','client_kms','byok_wrapped') NOT NULL
 is_active: BOOLEAN DEFAULT TRUE
 created_at: TIMESTAMPTZ DEFAULT NOW()
 
@@ -1302,14 +1790,31 @@ POST /api/v1/crypto/key-exchange
     # Para decapsulate:
     "pqc_ciphertext_hex": "...",
     "sender_x25519_public_key_hex": "...",
-    "pqc_secret_key_hex": "..."
+    "key_id": "kms_or_hsm_reference"
 }
 ```
 
+**Endpoint de firma seguro:**
+```python
+POST /api/v1/crypto/sign
+{
+    "data_hex": "...",
+    "key_id": "nivo_or_client_kms_key_id",
+    "purpose": "receipt|payment_order|audit_record"
+}
+
+# PROHIBIDO:
+# - aceptar signing_key_hex
+# - registrar llaves privadas en logs
+# - retornar secretos compartidos en producción
+```
+
 **Criterios de éxito:**
-- [ ] Un cliente externo con API key puede hacer sign/verify correctamente
+- [ ] Un cliente externo con API key y scope correcto puede hacer sign/verify correctamente usando `key_id`, nunca `signing_key_hex`
+- [ ] Requests con `signing_key_hex`, `pqc_secret_key_hex` o secretos privados retornan 400 y se registran como intento inseguro
 - [ ] El contador de uso se registra en BD para cada operación
 - [ ] Al superar el límite mensual, la API retorna 429 con mensaje de upgrade
+- [ ] Cada API key valida scopes por endpoint (`sign`, `verify`, `kem`, `receipt`)
 - [ ] `GET /api/v1/b2b/dashboard` retorna uso del mes y costo estimado
 
 **Dependencias:** TASK-001, TASK-004
@@ -1718,10 +2223,10 @@ la integración de clientes enterprise.
 ```python
 from Nivo_sdk import NivoClient
 
-client = NivoClient(api_key="qp_live_xxxxx")
+client = NivoClient(api_key="nv_live_xxxxx")
 
-# Firmar datos
-result = client.sign(data=b"datos a firmar")
+# Firmar datos con llave administrada por Nivo/KMS/HSM
+result = client.sign(data=b"datos a firmar", key_id="kms_receipts_prod")
 print(result.signature_hex)    # ML-DSA-65 signature
 print(result.fingerprint)      # SHA-256 de la llave pública
 
@@ -1738,13 +2243,15 @@ exchange = client.key_exchange(
     recipient_pqc_key_hex="...",
     recipient_x25519_key_hex="..."
 )
-# exchange.shared_secret_hex → usar para AES-256-GCM
+# exchange.pqc_ciphertext_hex + exchange.classical_public_key_hex se envían al receptor.
+# El shared secret no se retorna en producción.
 ```
 
 **Criterios de éxito:**
 - [ ] `pip install -e .` desde `backend/sdk/python/` instala el SDK sin errores
 - [ ] Los dos ejemplos en `examples/` corren contra el servidor de staging
 - [ ] El README explica en < 10 minutos cómo integrar PQC a un sistema existente
+- [ ] El SDK incluye modo client-side signing para clientes que no delegan firma a Nivo
 
 **Dependencias:** TASK-021
 
@@ -1925,9 +2432,93 @@ El usuario siempre debe entender:
 
 ---
 
+### TASK-034 — Bolsillos de Ahorro y Metas Nivo
+**Estado:** [ ] PENDING
+**Agente sugerido:** product + backend + mobile + legal
+**Estimado:** 1–2 semanas
+**Prioridad:** ALTA
+
+**Descripción:**
+Implementar bolsillos de ahorro como parte central de la experiencia tipo Revolut. En MVP
+pueden ser metas visuales; si existe banco/SEDPE/partner que soporte saldos reales, deben
+sincronizarse mediante `provider_subaccount_ref` y mostrar claramente quién custodia el dinero.
+
+**Archivos a crear/modificar:**
+- CREAR `backend/app/api/v1/savings.py`
+- CREAR `backend/app/services/savings_service.py`
+- CREAR `backend/app/models/orm/savings_pocket.py`
+- MODIFICAR mobile Home para mostrar bolsillos, progreso y reglas
+- MODIFICAR términos/UX para distinguir `visual_goal`, `partner_subaccount` y `custodial`
+
+**Reglas de producto:**
+- El usuario puede crear metas: emergencia, viaje, impuestos, inversión, familia.
+- Cada bolsillo tiene `mode`: `visual_goal`, `partner_subaccount` o `custodial`.
+- Si el modo no es custodial, la UI no puede decir "depósito Nivo" ni "cuenta de ahorros Nivo".
+- Cambios de estado y reglas automáticas se firman con ML-DSA para recibo verificable.
+- Reglas opcionales: redondeo de compras, monto recurrente, porcentaje de ingreso.
+
+**Criterios de éxito:**
+- [ ] Crear, editar y eliminar bolsillos desde API y mobile
+- [ ] Cada bolsillo muestra quién custodia el saldo o si es meta visual
+- [ ] Reglas de ahorro generan movimientos/referencias firmadas sin duplicar transacciones
+- [ ] No hay copy de captación propia si `mode=visual_goal` o `partner_subaccount`
+- [ ] Tests cubren cambios de modo, límites y firma de estado
+
+**Dependencias:** TASK-001, TASK-002, TASK-003
+
+---
+
+### TASK-035 — Módulos Regulados de Inversión, Crypto y FX
+**Estado:** [ ] PENDING
+**Agente sugerido:** product + backend + legal + compliance
+**Estimado:** 2–4 semanas discovery + prototipo cerrado
+**Prioridad:** ALTA
+
+**Descripción:**
+Diseñar e implementar la capa común de productos regulados para FX, crypto, acciones y ETFs.
+Nivo mantiene la experiencia de una sola app, pero cada ejecución vive en el partner autorizado
+hasta tener licencia propia.
+
+**Archivos a crear/modificar:**
+- CREAR `backend/app/api/v1/partner_orders.py`
+- CREAR `backend/app/services/partner_order_service.py`
+- CREAR `backend/app/services/disclosure_service.py`
+- CREAR `backend/app/models/orm/partner_order.py`
+- CREAR `backend/app/models/orm/product_disclosure.py`
+- CREAR adapters: `fx_partner_adapter.py`, `crypto_partner_adapter.py`, `broker_partner_adapter.py`
+
+**Reglas por módulo:**
+- FX: mostrar tasa, spread/fee, vigencia, partner, fuente y tiempo estimado antes de confirmar.
+- Crypto: disclosure de volatilidad, pérdida total, irreversibilidad, ausencia de garantía estatal, límites y AML reforzado.
+- Acciones/ETFs: partner/broker visible, tipo de orden, costos, suitability/appropriateness si aplica, sin asesoría propia.
+- Todas las órdenes guardan `risk_disclosure_version`, `accepted_disclosure_hash`, `partner`, `partner_order_id` y firma ML-DSA.
+- El usuario debe poder ver "quién ejecuta" y "quién custodia" antes de confirmar.
+
+**Criterios de éxito:**
+- [ ] Se puede crear una orden simulada de FX/crypto/stock con disclosure aceptado
+- [ ] La orden se firma con ML-DSA antes de enviarse al adapter del partner
+- [ ] La API rechaza órdenes si falta partner, disclosure o perfil KYC requerido
+- [ ] La UI muestra costos, riesgos, partner y estado de ejecución sin prometer rendimiento
+- [ ] Legal/compliance aprueba texto de disclosures antes de cualquier piloto real
+
+**Dependencias:** TASK-001, TASK-002, TASK-003, TASK-006, TASK-023, revisión legal/partner aprobado
+
+---
+
 ## RESUMEN DE DEPENDENCIAS
 
 ```
+SPRINT 0 — Correcciones (sin dependencias entre sí, se pueden hacer en paralelo):
+  FIX-001 (init_db bug)
+  FIX-002 (shared_secret exposure)
+  FIX-003 (signing_key_hex)
+  FIX-004 (crypto-agility config)
+  FIX-005 (DB session injection) → depende de FIX-001
+  FIX-006 (Transaction campos regulatorios)
+  FIX-007 (CORS URLs)
+  FIX-008 (rutas payments)
+  FIX-009 (httpx duplicado)
+
 TASK-001 (ORM)
   └─→ TASK-002 (JWT)
   └─→ TASK-003 (Pagos)
@@ -1953,12 +2544,18 @@ TASK-009 (Setup RN)
   └─→ TASK-011 (Home)
       └─→ TASK-012 (Pago P2P mobile)
       └─→ TASK-014 (Historial)
+      └─→ TASK-034 (Bolsillos ahorro)
   └─→ TASK-013 (Recarga mobile)
   └─→ TASK-015 (Perfil)
+
+TASK-025 (Multi-moneda)
+  └─→ TASK-035 (FX / crypto / acciones por partner)
 
 TASK-027 (Audit) → TASK-030 (Seed prep)
 TASK-032 (liboqs GCP) → TASK-028 (Performance)
 TASK-033 (Agentes portafolio) → Año 2+ con partner autorizado + legal aprobado
+TASK-034 (Ahorro) → Fase 2 cuenta tipo Revolut
+TASK-035 (Productos regulados) → Fase 3/Año 2 con partner autorizado
 ```
 
 ---
@@ -1967,6 +2564,15 @@ TASK-033 (Agentes portafolio) → Año 2+ con partner autorizado + legal aprobad
 
 | Task | Descripción corta | Mes | Estado |
 |------|------------------|-----|--------|
+| FIX-001 | Bug init_db() SQLAlchemy 2.0 | 0 | [ ] |
+| FIX-002 | Eliminar shared_secret de KeyExchangeResponse | 0 | [ ] |
+| FIX-003 | Eliminar signing_key_hex de SignRequest | 0 | [ ] |
+| FIX-004 | Conectar algoritmos PQC desde settings | 0 | [ ] |
+| FIX-005 | Inyectar sesión BD en routers | 0 | [ ] |
+| FIX-006 | Agregar campos regulatorios a Transaction | 0 | [ ] |
+| FIX-007 | Corregir URLs CORS (mayúsculas) | 0 | [ ] |
+| FIX-008 | Corregir orden de rutas payments.py | 0 | [ ] |
+| FIX-009 | Eliminar httpx duplicado en requirements | 0 | [ ] |
 | TASK-001 | ORM SQLAlchemy | 1 | [ ] |
 | TASK-002 | JWT Real | 1 | [ ] |
 | TASK-003 | Pagos Atómicos | 1 | [ ] |
@@ -2000,6 +2606,8 @@ TASK-033 (Agentes portafolio) → Año 2+ con partner autorizado + legal aprobad
 | TASK-031 | Monitoreo | Continuo | [ ] |
 | TASK-032 | liboqs en GCP | 1 | [ ] |
 | TASK-033 | Agentes de Portafolio | Año 2+ | [ ] |
+| TASK-034 | Bolsillos de Ahorro | 4 | [ ] |
+| TASK-035 | Inversión/Crypto/FX Partner | 5 | [ ] |
 
 ---
 

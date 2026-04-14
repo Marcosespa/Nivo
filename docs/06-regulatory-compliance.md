@@ -17,17 +17,27 @@
 | **Ministerio de Hacienda** | Política y decretos financieros | Decreto 2555, SEDPE, finanzas abiertas |
 | **Registraduría** | Identidad | Verificación KYC de documentos colombianos |
 
-### Decisión crítica: captación vs. middleware
+### Decisión crítica: banco como destino, captación por etapas
 
-La primera pregunta legal no es técnica: **¿Nivo captará dinero de usuarios?**
+La primera pregunta legal no es técnica: **¿Nivo captará dinero de usuarios desde esta fase?** La visión de largo plazo sí es bancaria: Nivo quiere convertirse en un neobanco tipo Revolut para Colombia y LATAM. La ejecución legal debe separar el destino de la fase actual.
 
 | Respuesta | Lectura regulatoria | Decisión MVP |
 |-----------|---------------------|--------------|
 | **Sí, guarda saldo propio** | Ruta SFC como SEDPE o entidad vigilada equivalente; requiere autorización, capital, gobierno corporativo, SARLAFT completo y supervisión. | No para MVP público. Preparar solo como ruta de escala. |
-| **No, solo orquesta pagos sobre terceros** | Puede operar como capa tecnológica, agregador/middleware o proveedor de servicios a una entidad regulada, sujeto a contratos, AML/LAFT proporcional, datos personales y consumidor. | Ruta recomendada para MVP. |
+| **No, solo orquesta pagos sobre terceros** | Puede operar como capa tecnológica, agregador/middleware o proveedor de servicios a una entidad regulada, sujeto a contratos, AML/LAFT proporcional, datos personales y consumidor. | Ruta recomendada para MVP, manteniendo UX de neobanco. |
 | **Prueba actividad vigilada innovadora** | Evaluar Sandbox SFC / Certificado de Operación Temporal (COT). | Aplicar solo si el abogado confirma que el caso toca actividad vigilada. |
 
-La SFC ha señalado que las SEDPE captan recursos del público exclusivamente mediante depósitos electrónicos y son instituciones financieras vigiladas. Por eso el MVP no debe prometer saldos custodiales propios hasta tener ruta SEDPE, COT o banco aliado.
+La SFC ha señalado que las SEDPE captan recursos del público exclusivamente mediante depósitos electrónicos y son instituciones financieras vigiladas. Por eso el MVP no debe prometer saldos custodiales propios hasta tener ruta SEDPE, COT o banco aliado, pero sí puede construir la experiencia, marca y arquitectura para llegar a ese punto.
+
+### Escalera regulatoria Nivo Bank
+
+| Etapa | Qué puede ofrecer | Qué no debe prometer |
+|-------|-------------------|----------------------|
+| MVP con aliados | Pagos, recibos verificables, KYC, tarjeta por emisor, bolsillos visuales, órdenes firmadas | Ser depositario legal de saldos propios |
+| Banco/SEDPE aliado | Cuenta real bajo entidad vigilada, subcuentas, tarjeta, pagos y ahorro cubiertos por contrato | Que Nivo sea entidad vigilada si legalmente no lo es |
+| COT/Sandbox | Prueba limitada de actividad vigilada innovadora con condiciones de SFC | Escala abierta o aprobación automática |
+| SEDPE propia | Depósitos electrónicos y pagos como institución financiera vigilada | Productos de valores, FX o crypto sin licencias/partners adicionales |
+| Neobanco full-stack | Cuenta, ahorro, tarjeta, FX, inversiones y crypto por licencias/partners propios | Rendimientos garantizados, asesoría sin licencia o custodia no autorizada |
 
 ### Modalidades de operación
 
@@ -171,6 +181,24 @@ El módulo COP/USD/EUR debe tratarse como producto cambiario, no como simple con
 - Se deben guardar tasa, timestamp, spread, partner, aceptación del usuario y comprobante ML-DSA.
 
 **Decisión:** FX va después de P2P/KYC/tarjeta, no antes.
+
+---
+
+## 7A. Ahorro y bolsillos
+
+El ahorro es parte central de la visión tipo Revolut. Legalmente debe distinguirse entre:
+
+- **Bolsillos visuales:** metas, categorías y reglas de ahorro dentro de la app, sin que Nivo custodie saldos propios.
+- **Subcuentas o saldos reales del aliado:** cuentas, depósitos o referencias custodiadas por banco/SEDPE/entidad vigilada.
+- **Depósitos electrónicos propios:** solo si Nivo obtiene SEDPE, COT o licencia/cobertura equivalente.
+
+**Regla de lanzamiento:**
+- En MVP, los bolsillos pueden ser metas visuales o reflejos de saldos de un partner.
+- No usar lenguaje de "depósito", "cuenta de ahorros propia" o "Nivo custodia tu plata" sin cobertura legal.
+- Si existe rentabilidad, rendimiento o interés, debe venir del aliado autorizado o de una estructura legal aprobada.
+- Cada cambio de saldo/estado se registra con recibo verificable y referencia del partner cuando aplique.
+
+**Decisión:** ahorro entra desde la experiencia temprana, pero el estado legal del saldo debe mostrarse con absoluta claridad.
 
 ---
 
