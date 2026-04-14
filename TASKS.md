@@ -2560,6 +2560,205 @@ TASK-035 (Productos regulados) → Fase 3/Año 2 con partner autorizado
 
 ---
 
+## ESTRUCTURA DE SPRINTS (OPTIMIZADA)
+
+### ⚠️ SPRINT 0 — Hardening & Fixes Críticos (Día 0–2)
+
+**Objetivo:** Que el sistema arranque seguro, sin bugs ni vulnerabilidades.  
+**Bloqueante** de todo lo demás.
+
+**Tasks:**
+- FIX-001 — DB init bug
+- FIX-002 — Eliminar `shared_secret`
+- FIX-003 — Eliminar `signing_key_hex`
+- FIX-004 — Crypto-agility desde `settings`
+- FIX-006 — Campos regulatorios `Transaction`
+- FIX-007 — CORS URLs
+- FIX-008 — Rutas `payments`
+- FIX-009 — `httpx` duplicado
+
+**Luego:**
+- FIX-005 (depende de FIX-001)
+
+---
+
+### 🧱 SPRINT 1 — Core Backend Foundation (Semana 1–2)
+
+**Objetivo:** Backend funcional real (DB + Auth + Crypto testeado).
+
+**Backend core:**
+- TASK-001 — ORM SQLAlchemy
+- TASK-002 — JWT + OTP + Redis
+- TASK-004 — Tests Crypto (crítico para CI)
+- TASK-005 — Twilio OTP
+
+**Infra crítica:**
+- TASK-032 — liboqs en GCP (validación real)
+
+**Resultado esperado:**
+- Backend autenticado
+- Crypto validado
+- DB lista
+
+---
+
+### 💸 SPRINT 2 — Motor de Pagos (Core Producto) (Semana 2–4)
+
+**Objetivo:** Dinero se mueve end-to-end.
+
+**Core payments:**
+- TASK-003 — Pagos atómicos
+- TASK-007 — Recarga PSE (Wompi)
+- TASK-008 — Retiros ACH
+
+**Compliance básico:**
+- TASK-006 — KYC Truora
+
+**Resultado esperado:**
+- Registro → recarga → envío → retiro
+
+---
+
+### 📱 SPRINT 3 — Mobile MVP (App usable) (Semana 5–8)
+
+**Objetivo:** App funcional completa.
+
+**Setup + Auth:**
+- TASK-009 — Setup RN
+- TASK-010 — Onboarding + OTP
+
+**Core UX:**
+- TASK-011 — Home
+- TASK-012 — Pago P2P
+
+**Soporte:**
+- TASK-013 — Recarga mobile
+- TASK-014 — Historial
+- TASK-015 — Perfil
+
+**Resultado esperado:**
+- App usable end-to-end (MVP real)
+
+---
+
+### 🏪 SPRINT 4 — Comercios + Infra Base (Semana 9–12)
+
+**Objetivo:** Primer loop de monetización (QR).
+
+**Comercios:**
+- TASK-016 — Backend merchants + QR
+- TASK-017 — Mobile modo comercio
+
+**Infra:**
+- TASK-019 — CI/CD
+- TASK-020 — Push notifications
+
+**Growth:**
+- TASK-018 — Landing page
+
+**Resultado esperado:**
+- Comercios pueden cobrar
+- Infra lista para escalar
+
+---
+
+### 🔐 SPRINT 5 — Seguridad, B2B y Monetización (Semana 13–16)
+
+**Objetivo:** Producto serio + revenue streams.
+
+**B2B:**
+- TASK-021 — API PQC completa
+- TASK-029 — SDK Python
+
+**Fintech:**
+- TASK-022 — Tarjeta virtual
+
+**Riesgo:**
+- TASK-023 — Fraude (reglas)
+
+**Resultado esperado:**
+- API vendible
+- Primer revenue B2B
+- Protección antifraude
+
+---
+
+### 🌍 SPRINT 6 — Escala & Expansión (Semana 17–20)
+
+**Objetivo:** Expandir capacidades del producto.
+
+**Finanzas avanzadas:**
+- TASK-025 — Multi-moneda
+- TASK-035 — Productos (FX / crypto / stocks)
+
+**Comercios:**
+- TASK-026 — Dashboard web
+
+**Ahorro:**
+- TASK-034 — Bolsillos
+
+**Resultado esperado:**
+- Producto tipo Revolut-lite
+
+---
+
+### 🧪 SPRINT 7 — Optimización & ML (Semana 21–22)
+
+**Objetivo:** Performance + inteligencia.
+
+**Tasks:**
+- TASK-028 — Performance testing
+- TASK-024 — Modelo ML fraude
+
+**Resultado esperado:**
+- Sistema robusto a escala
+- Inteligencia antifraude
+
+---
+
+### 🛡️ SPRINT 8 — Auditoría & Producción Ready (Semana 23)
+
+**Objetivo:** Preparar auditoría real.
+
+**Tasks:**
+- TASK-027 — Auditoría seguridad
+- TASK-031 — Monitoreo y alertas
+
+**Resultado esperado:**
+- Listo para auditoría externa
+
+---
+
+### 💰 SPRINT 9 — Fundraising Ready (Semana 24)
+
+**Objetivo:** Levantar capital.
+
+**Tasks:**
+- TASK-030 — Data room + métricas
+
+**Resultado esperado:**
+- Startup lista para levantar Seed
+
+---
+
+### 📊 Resumen Simplificado
+
+- S0: Hardening obligatorio
+- S1: Base backend lista
+- S2: Dinero moviéndose end-to-end
+- S3: Mobile MVP usable
+- S4: Comercios + base de escala
+- S5: Seguridad/B2B monetizable
+- S6: Expansión de capacidades financieras
+- S7: Optimización + ML
+- S8: Auditoría y operación estable
+- S9: Fundraising
+
+**Backlog fuera de roadmap de 24 semanas:**
+- TASK-033 — Agentes de Portafolio con Riesgo Transparente (Año 2+)
+
+---
+
 ## TRACKING DE PROGRESO
 
 | Task | Descripción corta | Mes | Estado |
