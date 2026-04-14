@@ -1,0 +1,58 @@
+# Nivo Backend — Dependencies
+# Python 3.11+
+
+# ─── Web framework ────────────────────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+gunicorn==23.0.0
+
+# ─── Validation & Settings ───────────────────────────────────────────────────
+pydantic==2.9.2
+pydantic-settings==2.6.0
+
+# ─── Database ─────────────────────────────────────────────────────────────────
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.13.3
+
+# ─── Cache / Sessions ─────────────────────────────────────────────────────────
+redis[asyncio]==5.2.0
+
+# ─── PQC — Post-Quantum Cryptography ────────────────────────────────────────
+# IMPORTANTE: liboqs-python requiere que liboqs esté instalado en el sistema.
+# Ver: https://github.com/open-quantum-safe/liboqs-python
+# Instalación: pip install liboqs-python (después de instalar liboqs C)
+liboqs-python==0.10.1
+
+# ─── Cryptography clásica (para modo híbrido X25519 + AES-GCM) ───────────────
+cryptography==43.0.3
+
+# ─── Autenticación JWT ────────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# ─── HTTP Client ─────────────────────────────────────────────────────────────
+httpx==0.27.2
+
+# ─── SMS / Notificaciones ─────────────────────────────────────────────────────
+twilio==9.3.7
+firebase-admin==6.6.0
+
+# ─── Observabilidad ──────────────────────────────────────────────────────────
+opentelemetry-api==1.28.0
+opentelemetry-sdk==1.28.0
+opentelemetry-instrumentation-fastapi==0.49b0
+sentry-sdk[fastapi]==2.18.0
+
+# ─── Utilidades ───────────────────────────────────────────────────────────────
+python-multipart==0.0.12
+python-dotenv==1.0.1
+orjson==3.10.11      # JSON serialización rápida
+
+# ─── Dev / Testing ────────────────────────────────────────────────────────────
+pytest==8.3.3
+pytest-asyncio==0.24.0
+httpx==0.27.2        # Para TestClient async
+coverage==7.6.4
+ruff==0.8.0
+mypy==1.13.0

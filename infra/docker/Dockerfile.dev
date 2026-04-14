@@ -1,0 +1,39 @@
+# Nivo Backend — Dockerfile de Desarrollo
+# NOTA: Para producción se requiere instalar liboqs C antes de liboqs-python
+# Ver: https://github.com/open-quantum-safe/liboqs
+
+FROM python:3.11-slim
+
+# Instalar dependencias del sistema (necesarias para liboqs y cryptography)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    libssl-dev \
+    pkg-config \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar liboqs C (requerido por liboqs-python)
+RUN git clone --depth 1 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs \
+    && cd /tmp/liboqs \
+    && mkdir build && cd build \
+    && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON .. \
+    && make -j$(nproc) \
+    && make install \
+    && ldconfig \
+    && rm -rf /tmp/liboqs
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Health check del contenedor
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
