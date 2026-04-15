@@ -6,11 +6,14 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from app.core.config import settings
 from app.models.base import Base  # noqa: F401 — re-exportado para que alembic/env.py lo importe
 
+engine_kwargs = {"echo": settings.DEBUG}
+if not settings.DATABASE_URL.startswith("sqlite+aiosqlite"):
+    engine_kwargs["pool_size"] = settings.DB_POOL_SIZE
+    engine_kwargs["max_overflow"] = settings.DB_MAX_OVERFLOW
+
 engine = create_async_engine(
     settings.DATABASE_URL,
-    pool_size=settings.DB_POOL_SIZE,
-    max_overflow=settings.DB_MAX_OVERFLOW,
-    echo=settings.DEBUG,
+    **engine_kwargs,
 )
 
 AsyncSessionLocal = async_sessionmaker(

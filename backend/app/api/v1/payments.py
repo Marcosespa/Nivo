@@ -15,22 +15,45 @@ orquesta, firma y concilia; PSE/ACH/banco aliado mueve y custodia fondos.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, or_
+from sqlalchemy.orm import selectinload
+import redis.asyncio as redis
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.crypto.service import CryptoService
-from app.models.user import User
-from app.models.transaction import TransactionStatus
+from app.models.orm.user import User
+from app.models.orm.transaction import (
+    Transaction as TransactionORM,
+    TransactionStatusEnum,
+    SettlementStatusEnum,
+    SettlementRailEnum,
+)
+from app.services.otp_service import OTPService
+from app.services.payment_service import (
+    PaymentService,
+    ReceiverNotFoundError,
+    WalletFrozenError,
+    DailyLimitExceededError,
+    InsufficientFundsError,
+    CustodyModeNotExecutableError,
+)
 
 router = APIRouter()
-crypto = CryptoService()
+payment_svc = PaymentService()
+
+
+# ─── Dependencia: Redis ────────────────────────────────────────────────────────
+
+async def get_redis() -> redis.Redis:
+    """Obtiene cliente Redis."""
+    return await redis.from_url(settings.REDIS_URL)
 
 
 # ─── Schemas de request/response ─────────────────────────────────────────────
@@ -85,13 +108,15 @@ class PaymentConfirmResponse(BaseModel):
     receiver_phone: str
     completed_at: datetime
     ml_dsa_signature_fingerprint: str   # Fingerprint de la firma cuántica
+    provider_reference: str | None = None
+    settlement_status: str
     quantum_shield: bool = True
     receipt_url: str       # URL del comprobante PDF firmado
 
 
 class TransactionDetail(BaseModel):
     tx_id: str
-    status: TransactionStatus
+    status: TransactionStatusEnum
     amount_cop: int
     amount_display: str
     sender_phone: str
@@ -100,8 +125,31 @@ class TransactionDetail(BaseModel):
     created_at: datetime
     confirmed_at: datetime | None
     ml_dsa_signature_fingerprint: str
+    provider_reference: str | None = None
+    settlement_status: str
     quantum_shield: bool = True
     pqc_algorithm: str
+
+
+class PaymentHistoryItem(BaseModel):
+    tx_id: str
+    status: TransactionStatusEnum
+    amount_cop: int
+    amount_display: str
+    direction: str
+    created_at: datetime
+    confirmed_at: datetime | None
+    ml_dsa_signature_fingerprint: str
+    provider_reference: str | None = None
+    settlement_status: str
+    rail: str
+
+
+class PaymentHistoryResponse(BaseModel):
+    transactions: list[PaymentHistoryItem]
+    page: int
+    page_size: int
+    total: int
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
@@ -122,6 +170,7 @@ async def initiate_payment(
     request: PaymentInitiateRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis_client: Annotated[redis.Redis, Depends(get_redis)],
 ) -> PaymentInitiateResponse:
     """
     Flujo de pago:
@@ -132,21 +181,38 @@ async def initiate_payment(
     5. Enviar OTP por SMS para confirmación
     6. Retornar tx_id y detalles para confirmar
     """
-    # TODO: consultar disponibilidad/fondos en PSE/ACH/banco aliado
-    # TODO: implementar lookup de receptor por teléfono
-    # TODO: implementar verificación de límites diarios
-    # TODO: implementar envío de OTP (Twilio)
-
-    tx_id = str(uuid.uuid4())
+    try:
+        result = await payment_svc.initiate_payment(
+            db=db,
+            redis_client=redis_client,
+            sender_id=current_user.id,
+            receiver_phone=request.receiver_phone,
+            amount_cop=request.amount_cop,
+            message=request.message,
+        )
+        otp_code = await OTPService(redis_client).generate_and_store(
+            current_user.phone_number,
+            "payment",
+        )
+        sms_sent = await payment_svc.sms_service.send_otp(current_user.phone_number, otp_code)
+        if not sms_sent:
+            raise HTTPException(status_code=503, detail="No pudimos enviar el OTP de confirmación")
+    except ReceiverNotFoundError:
+        raise HTTPException(status_code=404, detail="Receptor no encontrado en Nivo")
+    except WalletFrozenError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except (DailyLimitExceededError, InsufficientFundsError, CustodyModeNotExecutableError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
     return PaymentInitiateResponse(
-        tx_id=tx_id,
-        status="pending_confirmation",
-        receiver_phone=request.receiver_phone,
-        amount_cop=request.amount_cop,
-        amount_display=f"${request.amount_cop / 100:,.0f} COP",
+        tx_id=result["tx_id"],
+        status=result["status"],
+        receiver_phone=result["receiver_phone"],
+        amount_cop=result["amount_cop"],
+        amount_display=result["amount_display"],
         quantum_shield=True,
         pqc_algorithm=settings.PQC_ALGORITHM,
+        expires_in_seconds=result["expires_in_seconds"],
     )
 
 
@@ -165,6 +231,7 @@ async def confirm_payment(
     request: PaymentConfirmRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis_client: Annotated[redis.Redis, Depends(get_redis)],
 ) -> PaymentConfirmResponse:
     """
     Flujo de confirmación:
@@ -178,42 +245,44 @@ async def confirm_payment(
     8. Enviar notificación push al receptor
     9. Retornar comprobante con fingerprint de firma
     """
-    # TODO: verificar OTP contra Redis
-    # TODO: recuperar transacción pendiente de Redis
-    # TODO: ejecutar instrucción con el aliado regulado y conciliar resultado
-    # TODO: enviar push notification al receptor
-
-    # Construcción del payload de firma (incluye todos los datos de la tx)
-    now = datetime.now(timezone.utc)
-    tx_payload = (
-        f"tx:{request.tx_id}|"
-        f"sender:{current_user.id}|"
-        f"ts:{now.isoformat()}"
-    ).encode()
-
-    # Firma ML-DSA-65 (en producción: recuperar signing_key del usuario desde HSM)
-    signing_kp = crypto.generate_signing_keypair()  # TODO: usar llave persistida del usuario
-    signed_tx = crypto.sign_transaction(
-        tx_id=request.tx_id,
-        payload=tx_payload,
-        signing_secret_key=signing_kp.secret_key,
-        public_key_fingerprint=signing_kp.public_key_fingerprint,
+    is_valid = await OTPService(redis_client).verify(
+        current_user.phone_number,
+        request.otp_code,
+        "payment",
     )
+    if not is_valid:
+        raise HTTPException(status_code=401, detail="Código OTP inválido o expirado")
+
+    try:
+        transaction = await payment_svc.execute_payment(
+            db=db,
+            redis_client=redis_client,
+            tx_id=request.tx_id,
+            sender_id=current_user.id,
+            otp_code=request.otp_code,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (DailyLimitExceededError, InsufficientFundsError, CustodyModeNotExecutableError, WalletFrozenError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
     return PaymentConfirmResponse(
-        tx_id=request.tx_id,
-        status="completed",
-        amount_cop=0,      # TODO: recuperar de BD
-        amount_display="$0 COP",
-        receiver_phone="",  # TODO: recuperar de BD
-        completed_at=now,
-        ml_dsa_signature_fingerprint=signed_tx.public_key_fingerprint[:16],
-        receipt_url=f"https://api.Nivo.co/receipts/{request.tx_id}.pdf",
+        tx_id=str(transaction.id),
+        status=transaction.status.value,
+        amount_cop=transaction.amount_cop,
+        amount_display=f"${transaction.amount_cop / 100:,.0f} COP",
+        receiver_phone=transaction.receiver.phone_number,
+        completed_at=transaction.confirmed_at or transaction.created_at,
+        ml_dsa_signature_fingerprint=transaction.ml_dsa_signature.hex()[:16] if transaction.ml_dsa_signature else "none",
+        provider_reference=transaction.provider_reference,
+        settlement_status=transaction.settlement_status.value,
+        receipt_url=f"https://api.nivo.co/receipts/{transaction.id}.pdf",
     )
 
 
 @router.get(
     "/history",
+    response_model=PaymentHistoryResponse,
     summary="Historial de movimientos",
 )
 async def get_payment_history(
@@ -227,13 +296,44 @@ async def get_payment_history(
     Retorna el historial paginado de transacciones del usuario.
     Cada movimiento incluye el fingerprint de firma ML-DSA-65.
     """
-    # TODO: implementar consulta paginada a BD
-    return {
-        "transactions": [],
-        "page": page,
-        "page_size": page_size,
-        "total": 0,
-    }
+    stmt = select(TransactionORM).order_by(TransactionORM.created_at.desc())
+    if direction == "sent":
+        stmt = stmt.where(TransactionORM.sender_id == current_user.id)
+    elif direction == "received":
+        stmt = stmt.where(TransactionORM.receiver_id == current_user.id)
+    else:
+        stmt = stmt.where(
+            or_(
+                TransactionORM.sender_id == current_user.id,
+                TransactionORM.receiver_id == current_user.id,
+            )
+        )
+    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+
+    result = await db.execute(stmt)
+    transactions = result.scalars().all()
+
+    return PaymentHistoryResponse(
+        transactions=[
+            PaymentHistoryItem(
+                tx_id=str(tx.id),
+                status=tx.status,
+                amount_cop=tx.amount_cop,
+                amount_display=f"${tx.amount_cop / 100:,.0f} COP",
+                direction="sent" if tx.sender_id == current_user.id else "received",
+                created_at=tx.created_at,
+                confirmed_at=tx.confirmed_at,
+                ml_dsa_signature_fingerprint=tx.ml_dsa_signature.hex()[:16] if tx.ml_dsa_signature else "none",
+                provider_reference=tx.provider_reference,
+                settlement_status=tx.settlement_status.value,
+                rail=tx.rail.value,
+            )
+            for tx in transactions
+        ],
+        page=page,
+        page_size=page_size,
+        total=len(transactions),
+    )
 
 
 @router.get(
@@ -247,8 +347,39 @@ async def get_transaction(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> TransactionDetail:
     """Consulta el estado y detalles de una transacción específica."""
-    # TODO: implementar consulta real a BD
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Transacción {tx_id} no encontrada",
+    try:
+        tx_uuid = uuid.UUID(tx_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID de transacción inválido")
+
+    stmt = select(TransactionORM).where(
+        (TransactionORM.id == tx_uuid)
+        & or_(
+            TransactionORM.sender_id == current_user.id,
+            TransactionORM.receiver_id == current_user.id,
+        )
+    ).options(
+        selectinload(TransactionORM.sender),
+        selectinload(TransactionORM.receiver),
+    )
+    result = await db.execute(stmt)
+    tx = result.scalar_one_or_none()
+
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transacción no encontrada")
+
+    return TransactionDetail(
+        tx_id=str(tx.id),
+        status=tx.status,
+        amount_cop=tx.amount_cop,
+        amount_display=f"${tx.amount_cop / 100:,.0f} COP",
+        sender_phone=tx.sender.phone_number,
+        receiver_phone=tx.receiver.phone_number,
+        message=tx.message,
+        created_at=tx.created_at,
+        confirmed_at=tx.confirmed_at,
+        ml_dsa_signature_fingerprint=tx.ml_dsa_signature.hex()[:16] if tx.ml_dsa_signature else "none",
+        provider_reference=tx.provider_reference,
+        settlement_status=tx.settlement_status.value,
+        pqc_algorithm=settings.PQC_ALGORITHM,
     )

@@ -8,23 +8,6 @@ Flujo de onboarding:
   4. Se retorna JWT (access + refresh tokens)
 
 Endpoints:
-  POST /api/v1/auth/register     — Registrar nuevo usuario con OTP
-  POST /api/v1/auth/login        — Login con OTP (passwordless)
-  POST /api/v1/auth/verify-otp   — Verificar código OTP
-  POST /api/v1/auth/refresh       — Renovar access token
-  POST /api/v1/auth/logout        — Invalidar tokens
-"""
-
-"""
-Nivo — Router de Autenticación
-
-Flujo de onboarding:
-  1. Usuario ingresa número de celular
-  2. Se envía OTP por SMS (Twilio)
-  3. Usuario confirma OTP → se crea cuenta + llaves PQC
-  4. Se retorna JWT (access + refresh tokens)
-
-Endpoints:
   POST /api/v1/auth/request-otp    — Solicitar OTP por SMS
   POST /api/v1/auth/verify-otp     — Verificar código OTP y autenticar
   POST /api/v1/auth/refresh        — Renovar access token
@@ -50,10 +33,12 @@ from app.core.security import (
 )
 from app.services.otp_service import OTPService
 from app.services.auth_service import AuthService
+from app.services.sms_service import SMSService
 from app.utils.validators import validate_colombian_phone
 
 router = APIRouter()
 auth_service = AuthService()
+sms_service = SMSService()
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -84,8 +69,13 @@ class RefreshRequest(BaseModel):
 
 class RefreshResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     expires_in: int
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str
 
 
 # ─── Dependencia: Redis ────────────────────────────────────────────────────────
@@ -138,9 +128,13 @@ async def request_otp(
             detail=str(e),
         )
 
-    # TODO: Integrar Twilio para enviar SMS
-    # sms_service = SMSService()
-    # await sms_service.send_otp(phone_normalized, otp_code)
+    sms_sent = await sms_service.send_otp(phone_normalized, otp_code)
+    if not sms_sent:
+        await otp_service.invalidate(phone_normalized, "login")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No pudimos enviar el OTP en este momento",
+        )
 
     # En desarrollo, loggear OTP (NUNCA en producción)
     if settings.ENVIRONMENT == "development":
@@ -149,11 +143,17 @@ async def request_otp(
             f"[DEV] OTP para {phone_normalized[:7]}****: {otp_code}"
         )
 
-    return {
+    response = {
         "message": "OTP enviado al número registrado",
         "expires_in_seconds": settings.REDIS_OTP_TTL,
         "phone_number": phone_normalized[:7] + "****",  # Enmascarar
     }
+
+    # Dev-only helper para pruebas locales cuando no hay SMS real.
+    if settings.ENVIRONMENT == "development":
+        response["dev_otp"] = otp_code
+
+    return response
 
 
 @router.post(
@@ -224,7 +224,10 @@ async def verify_otp(
             (PQCKeyORM.user_id == user.id) & (PQCKeyORM.is_active == True)
         )
         result = await db.execute(stmt)
-        pqc_key = result.scalar_one()
+        pqc_key = result.scalar_one_or_none()
+        if pqc_key is None:
+            pqc_key = await auth_service.create_pqc_keys_for_user(db, user.id)
+            await db.commit()
 
     # Generar tokens JWT
     access_token = create_access_token(
@@ -298,6 +301,11 @@ async def refresh_token(
         phone_number=phone_number,
         plan=plan,
     )
+    new_refresh_token = create_refresh_token(
+        user_id=user_id,
+        phone_number=phone_number,
+        plan=plan,
+    )
 
     # Invalidar refresh token anterior (agregarlo a blacklist)
     await auth_service.invalidate_refresh_token(
@@ -308,6 +316,7 @@ async def refresh_token(
 
     return RefreshResponse(
         access_token=new_access_token,
+        refresh_token=new_refresh_token,
         expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
@@ -316,17 +325,36 @@ async def refresh_token(
     "/logout",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Cerrar sesión",
-    description="Invalida los tokens del usuario.",
+    description="Invalida el refresh token del usuario.",
 )
 async def logout(
-    authorization: Annotated[str, Depends(lambda creds=Depends(lambda: None): "")],
+    request: LogoutRequest,
     redis_client: Annotated[redis.Redis, Depends(get_redis)],
 ):
     """
-    Cierra la sesión invalidando los tokens.
-
-    El refresh token se agrega a una blacklist en Redis.
+    Cierra la sesión invalidando el refresh token del usuario.
     """
-    # TODO: Implementar logout real extrayendo el refresh token del header
-    # Por ahora, es un endpoint placeholder
+    payload = await decode_token(request.refresh_token)
+    if payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token no es un refresh token válido",
+        )
+
+    jti = payload.get("jti")
+    exp = payload.get("exp")
+    if not jti or not exp:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token inválido",
+        )
+
+    ttl = max(
+        int(
+            datetime.fromtimestamp(exp, tz=timezone.utc).timestamp()
+            - datetime.now(timezone.utc).timestamp()
+        ),
+        1,
+    )
+    await auth_service.invalidate_refresh_token(redis_client, jti, ttl)
     return None

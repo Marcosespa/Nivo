@@ -16,7 +16,7 @@ Billing: por operación en el dashboard B2B
 """
 
 from fastapi import APIRouter, HTTPException, Header, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.core.config import settings
 from app.crypto.service import CryptoService
@@ -39,6 +39,7 @@ class KeyExchangeResponse(BaseModel):
 
 
 class SignRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
     data_hex: str           # Datos a firmar (hex)
 
 
@@ -137,9 +138,13 @@ async def sign_data(request: SignRequest) -> SignResponse:
     Las llaves privadas NUNCA viajan por la API.
     """
     # Validar que el request no contiene claves privadas
-    request_dict = request.model_dump()
-    forbidden_keys = {"signing_key_hex", "secret_key_hex", "private_key_hex", "sk"}
-    if any(key in request_dict for key in forbidden_keys):
+    extra_fields = set((request.model_extra or {}).keys())
+    if any(
+        ("private" in field.lower())
+        or ("secret" in field.lower())
+        or ("signing" in field.lower() and "key" in field.lower())
+        for field in extra_fields
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Las llaves privadas NUNCA deben enviarse en esta API. Use HSM/KMS.",

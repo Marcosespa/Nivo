@@ -19,8 +19,10 @@ from app.models.orm.transaction import (
     SettlementStatusEnum,
 )
 from app.models.orm.pqc_key import PQCKey as PQCKeyORM
+from app.models.orm.wallet import Wallet as WalletORM, CustodyModeEnum
 from app.services.wallet_service import WalletService
 from app.services.sms_service import SMSService
+from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +77,7 @@ class PaymentService:
         self.crypto = CryptoService()
         self.wallet_service = WalletService()
         self.sms_service = SMSService()
+        self.notification_service = NotificationService()
 
     async def initiate_payment(
         self,
@@ -134,6 +137,16 @@ class PaymentService:
 
         if sender_wallet.is_frozen:
             raise WalletFrozenError("Tu billetera está congelada. Contacta al soporte.")
+
+        if sender_wallet.custody_mode not in {
+            CustodyModeEnum.VISUAL_ONLY,
+            CustodyModeEnum.PARTNER_LEDGER,
+            CustodyModeEnum.BANK_PARTNER,
+            CustodyModeEnum.SEDPE,
+        }:
+            raise CustodyModeNotExecutableError(
+                "Tu billetera no está habilitada para pagos en este momento."
+            )
 
         # Verificar límites diarios
         within_limit = await self.wallet_service.check_daily_limit(
@@ -233,6 +246,13 @@ class PaymentService:
         receiver_id = uuid.UUID(pending_data["receiver_id"])
         amount_cop = int(pending_data["amount_cop"])
         message = pending_data.get("message")
+        receiver_phone = pending_data["receiver_phone"]
+        sender = None
+        receiver = None
+        transaction = None
+
+        # Asegurar que cualquier transacción implícita previa quede cerrada antes del bloque atómico.
+        await db.rollback()
 
         # Usar transacción de BD para atomicidad
         async with db.begin():
@@ -240,6 +260,9 @@ class PaymentService:
             stmt = select(UserORM).where(UserORM.id == sender_id)
             result = await db.execute(stmt)
             sender = result.scalar_one()
+            receiver_stmt = select(UserORM).where(UserORM.id == receiver_id)
+            receiver_result = await db.execute(receiver_stmt)
+            receiver = receiver_result.scalar_one()
 
             within_limit = await self.wallet_service.check_daily_limit(
                 db,
@@ -256,6 +279,29 @@ class PaymentService:
             )
             result = await db.execute(stmt)
             pqc_key = result.scalar_one()
+
+            sender_wallet_stmt = (
+                select(WalletORM)
+                .where(WalletORM.user_id == sender_id)
+                .with_for_update()
+            )
+            sender_wallet_result = await db.execute(sender_wallet_stmt)
+            sender_wallet = sender_wallet_result.scalar_one()
+
+            receiver_wallet_stmt = (
+                select(WalletORM)
+                .where(WalletORM.user_id == receiver_id)
+                .with_for_update()
+            )
+            receiver_wallet_result = await db.execute(receiver_wallet_stmt)
+            receiver_wallet = receiver_wallet_result.scalar_one_or_none()
+            if receiver_wallet is None:
+                receiver_wallet = await self.wallet_service.get_or_create_wallet(db, receiver_id)
+
+            if sender_wallet.is_frozen:
+                raise WalletFrozenError("Tu billetera está congelada. Contacta al soporte.")
+            if sender_wallet.display_balance_cop < amount_cop:
+                raise InsufficientFundsError("Saldo insuficiente en tu billetera")
 
             # Construir payload para firma
             now = datetime.now(timezone.utc)
@@ -294,13 +340,12 @@ class PaymentService:
                 created_at=now,
                 confirmed_at=now,
             )
+            transaction.sender = sender
+            transaction.receiver = receiver
             db.add(transaction)
             await db.flush()
 
             # Actualizar balances visuales
-            sender_wallet = await self.wallet_service.get_or_create_wallet(db, sender_id)
-            receiver_wallet = await self.wallet_service.get_or_create_wallet(db, receiver_id)
-
             sender_wallet.display_balance_cop -= amount_cop
             receiver_wallet.display_balance_cop += amount_cop
 
@@ -312,13 +357,89 @@ class PaymentService:
 
         # Enviar notificación SMS al receptor (no bloquea)
         try:
-            receiver_name = sender.full_name or sender.phone_number
+            sender_name = sender.full_name or sender.phone_number
             await self.sms_service.send_payment_notification(
-                pending_data["receiver_phone"],
+                receiver_phone,
                 f"${amount_cop / 100:,.0f} COP",
-                receiver_name,
+                sender_name,
+            )
+            await self.notification_service.notify_payment_received(
+                receiver.id,
+                f"${amount_cop / 100:,.0f} COP",
+                sender.phone_number,
             )
         except Exception as e:
             logger.error(f"Failed to send SMS notification: {e}")
 
+        return transaction
+
+    async def get_history(
+        self,
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        page: int = 1,
+        page_size: int = 20,
+        direction: str = "all",
+    ) -> dict:
+        """Retorna historial paginado de transacciones del usuario."""
+        filters = [TransactionORM.status == TransactionStatusEnum.COMPLETED]
+        if direction == "sent":
+            filters.append(TransactionORM.sender_id == user_id)
+        elif direction == "received":
+            filters.append(TransactionORM.receiver_id == user_id)
+        else:
+            filters.append(
+                (TransactionORM.sender_id == user_id) | (TransactionORM.receiver_id == user_id)
+            )
+
+        stmt = (
+            select(TransactionORM)
+            .where(*filters)
+            .order_by(TransactionORM.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        result = await db.execute(stmt)
+        transactions = result.scalars().all()
+
+        return {
+            "transactions": [
+                {
+                    "tx_id": str(tx.id),
+                    "status": tx.status.value,
+                    "amount_cop": tx.amount_cop,
+                    "amount_display": f"${tx.amount_cop / 100:,.0f} COP",
+                    "sender_id": str(tx.sender_id),
+                    "receiver_id": str(tx.receiver_id),
+                    "message": tx.message,
+                    "created_at": tx.created_at,
+                    "confirmed_at": tx.confirmed_at,
+                    "ml_dsa_signature_fingerprint": tx.ml_dsa_signature.hex()[:16],
+                    "quantum_shield": True,
+                    "pqc_algorithm": settings.PQC_SIGNATURE_ALGORITHM,
+                    "provider_reference": tx.provider_reference,
+                    "settlement_status": tx.settlement_status.value,
+                    "rail": tx.rail.value,
+                }
+                for tx in transactions
+            ],
+            "page": page,
+            "page_size": page_size,
+            "total": len(transactions),
+        }
+
+    async def get_transaction_detail(
+        self,
+        db: AsyncSession,
+        tx_id: str,
+        user_id: uuid.UUID,
+    ) -> TransactionORM | None:
+        """Obtiene una transacción si el usuario es parte de ella."""
+        stmt = select(TransactionORM).where(TransactionORM.id == uuid.UUID(tx_id))
+        result = await db.execute(stmt)
+        transaction = result.scalar_one_or_none()
+        if transaction is None:
+            return None
+        if transaction.sender_id != user_id and transaction.receiver_id != user_id:
+            return None
         return transaction

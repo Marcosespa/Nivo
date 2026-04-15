@@ -13,7 +13,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.v1 import auth, users, payments, crypto, health, kyc, topup, withdrawal
+from app.api.v1 import auth, users, payments, crypto, health, kyc, topup, withdrawal, dev_seed
 from app.crypto.service import CryptoService
 
 
@@ -75,6 +75,14 @@ app.include_router(kyc.router, prefix="/api/v1/kyc", tags=["KYC"])
 app.include_router(topup.router, prefix="/api/v1/topup", tags=["Top-ups"])
 app.include_router(withdrawal.router, prefix="/api/v1/withdrawal", tags=["Retiros"])
 app.include_router(crypto.router, prefix="/api/v1/crypto", tags=["PQC API B2B"])
+
+# ⚠️  Dev-only: seed de datos de prueba — NO disponible en producción
+if settings.ENVIRONMENT == "development":
+    app.include_router(
+        dev_seed.router,
+        prefix="/api/v1/dev",
+        tags=["⚠️ Dev Only"],
+    )
 
 
 @app.get("/", include_in_schema=False)

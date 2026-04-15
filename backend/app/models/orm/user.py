@@ -40,8 +40,22 @@ class User(Base):
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Plan y estado
-    plan: Mapped[UserPlanEnum] = mapped_column(SQLEnum(UserPlanEnum), default=UserPlanEnum.FREE)
-    kyc_status: Mapped[KYCStatusEnum] = mapped_column(SQLEnum(KYCStatusEnum), default=KYCStatusEnum.PENDING)
+    plan: Mapped[UserPlanEnum] = mapped_column(
+        SQLEnum(
+            UserPlanEnum,
+            name="userplanenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        default=UserPlanEnum.FREE,
+    )
+    kyc_status: Mapped[KYCStatusEnum] = mapped_column(
+        SQLEnum(
+            KYCStatusEnum,
+            name="kycstatusenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        default=KYCStatusEnum.PENDING,
+    )
     kyc_provider_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 

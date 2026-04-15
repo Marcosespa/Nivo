@@ -1,0 +1,412 @@
+{
+  "info": {
+    "_postman_id": "nivo-sprint1-collection",
+    "name": "Nivo Sprint 1",
+    "description": "Complete API collection for Nivo quantum-safe neobank — Sprint 1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Request OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"{{phone_number}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/request-otp",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "request-otp"]
+            },
+            "description": "Request OTP code via SMS. Phone number should be in +57 format."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var body = pm.response.json();",
+                  "    pm.collectionVariables.set(\"access_token\", body.access_token);",
+                  "    pm.collectionVariables.set(\"refresh_token\", body.refresh_token);",
+                  "    pm.collectionVariables.set(\"user_id\", body.user_id);",
+                  "    pm.collectionVariables.set(\"pqc_key_fingerprint\", body.pqc_key_fingerprint);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"{{phone_number}}\",\n  \"otp_code\": \"{{otp_code}}\",\n  \"device_id\": \"postman-client-1\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/verify-otp",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "verify-otp"]
+            },
+            "description": "Verify OTP and receive JWT tokens. Sets access_token, refresh_token, and user_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "Refresh access token using a valid refresh token."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Logout and invalidate the access token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "👤 Users",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me"]
+            },
+            "description": "Get authenticated user profile information."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Wallet",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me/wallet",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me", "wallet"]
+            },
+            "description": "Get user wallet balance and status."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "💸 Payments",
+      "item": [
+        {
+          "name": "Initiate Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 202) {",
+                  "    pm.collectionVariables.set(\"tx_id\", pm.response.json().tx_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiver_phone\": \"+573102222222\",\n  \"amount_cop\": 50000,\n  \"message\": \"Payment for services\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/payments/initiate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "payments", "initiate"]
+            },
+            "description": "Initiate a P2P payment. Returns transaction ID for confirmation."
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tx_id\": \"{{tx_id}}\",\n  \"otp_code\": \"{{otp_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/payments/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "payments", "confirm"]
+            },
+            "description": "Confirm and execute a pending payment with OTP."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payment History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/payments/history?page=1&page_size=20&direction=all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "payments", "history"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "page_size",
+                  "value": "20"
+                },
+                {
+                  "key": "direction",
+                  "value": "all",
+                  "description": "sent | received | all"
+                }
+              ]
+            },
+            "description": "Get paginated payment history for the user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transaction Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/payments/{{tx_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "payments", "{{tx_id}}"]
+            },
+            "description": "Get details for a specific transaction."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🔑 PQC Crypto (B2B)",
+      "item": [
+        {
+          "name": "List Algorithms",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/crypto/algorithms",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "crypto", "algorithms"]
+            },
+            "description": "List supported post-quantum cryptography algorithms."
+          },
+          "response": []
+        },
+        {
+          "name": "Sign Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_hex\": \"68656c6c6f20776f726c64\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/crypto/sign",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "crypto", "sign"]
+            },
+            "description": "Sign data with ML-DSA-65. Data must be in hexadecimal format. Returns signature and public key."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Signature",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_hex\": \"68656c6c6f20776f726c64\",\n  \"signature_hex\": \"<signature from sign endpoint>\",\n  \"public_key_hex\": \"<public key from sign endpoint>\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/crypto/verify",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "crypto", "verify"]
+            },
+            "description": "Verify an ML-DSA-65 signature. All fields must be in hexadecimal format."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "❤️ Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "API health check endpoint."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tx_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pqc_key_fingerprint",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "phone_number",
+      "value": "+573101234567",
+      "type": "string"
+    },
+    {
+      "key": "otp_code",
+      "value": "123456",
+      "type": "string"
+    }
+  ]
+}

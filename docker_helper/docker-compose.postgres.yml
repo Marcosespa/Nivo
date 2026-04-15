@@ -1,0 +1,76 @@
+# Nivo — Docker Helper: Bases de datos para desarrollo local
+# Levanta PostgreSQL 16 + Redis 7 en modo standalone (sin la app)
+#
+# Uso:
+#   docker compose -f docker_helper/docker-compose.postgres.yml up -d
+#   docker compose -f docker_helper/docker-compose.postgres.yml down
+#   docker compose -f docker_helper/docker-compose.postgres.yml down -v  # elimina volúmenes
+#
+# Conexión desde el host:
+#   PostgreSQL: postgresql://Nivo:Nivo@localhost:5432/Nivo_dev
+#   Redis:      redis://localhost:6379/0
+#   pgAdmin:    http://localhost:5050  (admin@nivo.co / nivo_admin)
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: nivo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: Nivo
+      POSTGRES_PASSWORD: Nivo
+      POSTGRES_DB: Nivo_dev
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - nivo_postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro  # scripts SQL de inicialización (opcional)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U Nivo -d Nivo_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: nivo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - nivo_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: nivo-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@nivo.co
+      PGADMIN_DEFAULT_PASSWORD: nivo_admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - nivo_pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  nivo_postgres_data:
+    driver: local
+  nivo_redis_data:
+    driver: local
+  nivo_pgadmin_data:
+    driver: local

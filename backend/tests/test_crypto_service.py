@@ -220,6 +220,17 @@ class TestMLKEMKeyExchange:
 
         assert encap.shared_secret == decap_secret
 
+    def test_encapsulate_with_wrong_key_raises_error(self, crypto):
+        from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+        from cryptography.hazmat.primitives import serialization
+
+        kem_kp = crypto.generate_kem_keypair()
+        x25519_private = X25519PrivateKey.generate()
+        invalid_public_key = b"short-key"
+
+        with pytest.raises(ValueError):
+            crypto.hybrid_encapsulate(kem_kp.public_key, invalid_public_key)
+
 
 # ─── Tests de Cifrado AES-GCM ─────────────────────────────────────────────────
 
@@ -304,3 +315,148 @@ class TestCryptoAgility:
 
         assert crypto.KEM_ALGORITHM == settings.PQC_ALGORITHM
         assert crypto.SIG_ALGORITHM == settings.PQC_SIGNATURE_ALGORITHM
+
+    def test_service_interface_stable(self, crypto):
+        for attr in (
+            "generate_kem_keypair",
+            "generate_signing_keypair",
+            "hybrid_encapsulate",
+            "hybrid_decapsulate",
+            "sign_transaction",
+            "verify_transaction_signature",
+            "encrypt",
+            "decrypt",
+            "health_check",
+        ):
+            assert hasattr(crypto, attr)
+
+
+class TestLiboqsBranches:
+    class FakeKeyEncapsulation:
+        def __init__(self, algorithm, secret_key=None):
+            self.algorithm = algorithm
+            self.secret_key = secret_key
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def generate_keypair(self):
+            return b"kem-public"
+
+        def export_secret_key(self):
+            return b"kem-secret"
+
+        def encap_secret(self, recipient_public_key):
+            return b"kem-ciphertext", b"shared-secret-material"
+
+        def decap_secret(self, ciphertext):
+            return b"shared-secret-material"
+
+    class FakeSignature:
+        def __init__(self, algorithm, secret_key=None):
+            self.algorithm = algorithm
+            self.secret_key = secret_key
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def generate_keypair(self):
+            return b"sig-public"
+
+        def export_secret_key(self):
+            return b"sig-secret"
+
+        def sign(self, payload):
+            return b"signed:" + payload
+
+        def verify(self, payload, signature, public_key):
+            return signature == b"signed:" + payload and public_key == b"sig-public"
+
+    def test_real_branch_keypair_generation(self, monkeypatch):
+        from app.crypto import service as crypto_module
+
+        fake_oqs = type(
+            "FakeOQS",
+            (),
+            {
+                "KeyEncapsulation": self.FakeKeyEncapsulation,
+                "Signature": self.FakeSignature,
+            },
+        )
+        monkeypatch.setattr(crypto_module, "oqs", fake_oqs, raising=False)
+
+        crypto = CryptoService()
+        crypto._liboqs_available = True
+
+        kem = crypto.generate_kem_keypair()
+        sig = crypto.generate_signing_keypair()
+
+        assert kem.public_key == b"kem-public"
+        assert sig.public_key == b"sig-public"
+
+    def test_real_branch_sign_verify_and_kem_roundtrip(self, monkeypatch):
+        from app.crypto import service as crypto_module
+        from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+        from cryptography.hazmat.primitives import serialization
+
+        fake_oqs = type(
+            "FakeOQS",
+            (),
+            {
+                "KeyEncapsulation": self.FakeKeyEncapsulation,
+                "Signature": self.FakeSignature,
+            },
+        )
+        monkeypatch.setattr(crypto_module, "oqs", fake_oqs, raising=False)
+
+        crypto = CryptoService()
+        crypto._liboqs_available = True
+
+        sig = crypto.generate_signing_keypair()
+        signed = crypto.sign_transaction("tx", b"payload", sig.secret_key, "fp")
+        assert crypto.verify_transaction_signature(signed, sig.public_key) is True
+        assert crypto.verify_transaction_signature(signed, b"wrong-public") is False
+
+        kem = crypto.generate_kem_keypair()
+        x25519_private = X25519PrivateKey.generate()
+        x25519_public = x25519_private.public_key().public_bytes(
+            serialization.Encoding.Raw,
+            serialization.PublicFormat.Raw,
+        )
+        encap = crypto.hybrid_encapsulate(kem.public_key, x25519_public)
+        decap = crypto.hybrid_decapsulate(
+            encap.pqc_ciphertext,
+            kem.secret_key,
+            encap.classical_public_key,
+            x25519_private.private_bytes(
+                serialization.Encoding.Raw,
+                serialization.PrivateFormat.Raw,
+                serialization.NoEncryption(),
+            ),
+        )
+        assert encap.shared_secret == decap
+
+    @pytest.mark.asyncio
+    async def test_health_check_returns_false_on_invalid_signature(self, monkeypatch):
+        crypto = CryptoService()
+
+        monkeypatch.setattr(crypto, "verify_transaction_signature", lambda signed, public_key: False)
+
+        assert await crypto.health_check() is False
+
+    @pytest.mark.asyncio
+    async def test_health_check_returns_false_on_exception(self, monkeypatch):
+        crypto = CryptoService()
+
+        def blow_up():
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(crypto, "generate_signing_keypair", blow_up)
+
+        assert await crypto.health_check() is False

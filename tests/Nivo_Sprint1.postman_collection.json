@@ -1,0 +1,877 @@
+{
+  "info": {
+    "_postman_id": "nivo-sprint1-2026",
+    "name": "Nivo API — Sprint 1",
+    "description": "Colección completa para probar Nivo. Empieza siempre por **🌱 Seed → Run Seed** para crear usuarios con saldo y propagar tokens automáticamente. Después el flujo completo de pagos funciona sin ninguna configuración manual.\n\n**Orden de ejecución:**\n1. 🌱 Seed → Run Seed  *(propaga access_token y receiver_phone automáticamente)*\n2. 👤 Users → Get Profile\n3. 👤 Users → Get Wallet\n4. 💸 Payments → Initiate Payment\n5. 💸 Payments → Confirm Payment *(usa el otp de los logs si el OTP real falla)*\n6. 💸 Payments → Get Transaction\n7. 🔐 Auth → (flujo OTP real opcional)\n8. 🔒 PQC Crypto\n9. ❤️ Health\n\n**Variables de colección (pre-configuradas):**\n- `base_url` → http://127.0.0.1:8000\n- `sender_phone` / `receiver_phone` → números de prueba\n- El resto se llena automáticamente al correr Seed",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",        "value": "http://127.0.0.1:8000", "type": "string" },
+    { "key": "sender_phone",    "value": "+573001234567",           "type": "string" },
+    { "key": "receiver_phone",  "value": "+573009876543",           "type": "string" },
+    { "key": "access_token",    "value": "",                        "type": "string" },
+    { "key": "refresh_token",   "value": "",                        "type": "string" },
+    { "key": "user_id",         "value": "",                        "type": "string" },
+    { "key": "tx_id",           "value": "",                        "type": "string" },
+    { "key": "otp_code",        "value": "123456",                  "type": "string" },
+    { "key": "pqc_signature_hex",  "value": "",                     "type": "string" },
+    { "key": "pqc_public_key_hex", "value": "",                     "type": "string" },
+    { "key": "signed_data_hex",    "value": "",                     "type": "string" },
+    { "key": "b2b_api_key",    "value": "nivo_dev_key_32chars_minimum_here", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "🌱 Seed",
+      "description": "Prepara la base de datos para demos. Crea sender + receiver con saldo pre-cargado y propaga los tokens automáticamente. Solo disponible cuando ENVIRONMENT=development.",
+      "item": [
+        {
+          "name": "Run Seed ▶",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 — seed OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test('Sender creado con saldo', () => {",
+                  "    pm.expect(json.sender).to.have.property('access_token');",
+                  "    pm.expect(json.sender.wallet_balance_cop).to.be.above(0);",
+                  "});",
+                  "",
+                  "pm.test('Receiver creado', () => {",
+                  "    pm.expect(json.receiver).to.have.property('access_token');",
+                  "});",
+                  "",
+                  "// ── Propagar tokens del SENDER a variables de colección ──",
+                  "pm.collectionVariables.set('access_token',   json.sender.access_token);",
+                  "pm.collectionVariables.set('refresh_token',  json.sender.refresh_token);",
+                  "pm.collectionVariables.set('user_id',        json.sender.user_id);",
+                  "pm.collectionVariables.set('sender_phone',   json.sender.phone_number);",
+                  "pm.collectionVariables.set('receiver_phone', json.receiver.phone_number);",
+                  "",
+                  "console.log('✅ Seed exitoso');",
+                  "console.log('   Sender:', json.sender.phone_number, '→', json.sender.wallet_balance_display);",
+                  "console.log('   Receiver:', json.receiver.phone_number);",
+                  "console.log('   access_token propagado:', json.sender.access_token.substring(0,40)+'...');",
+                  "console.log('');",
+                  "console.log('👉 Ahora puedes correr cualquier request de la colección.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sender_phone\": \"{{sender_phone}}\",\n  \"receiver_phone\": \"{{receiver_phone}}\",\n  \"seed_balance_cop\": 50000000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/dev/seed",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dev", "seed"]
+            },
+            "description": "Crea sender (+573001234567) con $500.000 COP y receiver (+573009876543) con saldo 0. Propaga automáticamente access_token, refresh_token, user_id, sender_phone y receiver_phone.\n\n`seed_balance_cop` está en centavos: 50000000 = $500.000 COP."
+          }
+        },
+        {
+          "name": "Reset Seed (limpiar usuarios)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204 — usuarios eliminados', () => pm.response.to.have.status(204));",
+                  "pm.collectionVariables.set('access_token', '');",
+                  "pm.collectionVariables.set('refresh_token', '');",
+                  "pm.collectionVariables.set('user_id', '');",
+                  "pm.collectionVariables.set('tx_id', '');",
+                  "console.log('🗑️ Usuarios de prueba eliminados. Corre Run Seed para volver a empezar.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sender_phone\": \"{{sender_phone}}\",\n  \"receiver_phone\": \"{{receiver_phone}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/dev/seed",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dev", "seed"]
+            },
+            "description": "Elimina los usuarios de prueba. Útil para empezar desde cero sin tocar la DB manualmente."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔐 Auth",
+      "description": "Flujo de autenticación con OTP real por SMS. En modo dev el OTP aparece en los logs del servidor.\n\nNormalmente no necesitas correr esto si ya corriste Seed — el token ya está propagado.",
+      "item": [
+        {
+          "name": "Request OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Tiene expires_in_seconds', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('expires_in_seconds');",
+                  "});",
+                  "pm.test('Teléfono enmascarado en respuesta', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.phone_number).to.include('****');",
+                  "});",
+                  "console.log('📱 OTP solicitado. Revisa los logs del backend para el código.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"{{sender_phone}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/request-otp",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "request-otp"]
+            },
+            "description": "Solicita OTP por SMS. El código aparece en los logs del servidor cuando ENVIRONMENT=development:\n```\n[DEV] OTP para +573001****: 123456\n```\nCopia ese código a la variable `otp_code` antes de correr Verify OTP."
+          }
+        },
+        {
+          "name": "Verify OTP → guarda token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Recibe access_token y refresh_token', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('access_token');",
+                  "    pm.expect(json).to.have.property('refresh_token');",
+                  "    pm.expect(json.token_type).to.equal('bearer');",
+                  "});",
+                  "",
+                  "pm.test('Guardar tokens', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token',  json.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', json.refresh_token);",
+                  "    pm.collectionVariables.set('user_id',       json.user_id);",
+                  "    console.log('✅ Tokens guardados. user_id:', json.user_id);",
+                  "});",
+                  "",
+                  "pm.test('Fingerprint PQC presente', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.pqc_key_fingerprint.length).to.be.at.least(8);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"{{sender_phone}}\",\n  \"otp_code\": \"{{otp_code}}\",\n  \"device_id\": \"postman-device-001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/verify-otp",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "verify-otp"]
+            },
+            "description": "Verifica el OTP y retorna JWT. Actualiza la variable `otp_code` con el código que viste en los logs antes de correr este request."
+          }
+        },
+        {
+          "name": "Verify OTP — OTP inválido (debe dar 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 para OTP inválido', () => pm.response.to.have.status(401));",
+                  "pm.test('Mensaje de error correcto', () => {",
+                  "    pm.expect(pm.response.json().detail).to.include('OTP');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"{{sender_phone}}\",\n  \"otp_code\": \"000000\",\n  \"device_id\": \"postman-device-001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/verify-otp",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "verify-otp"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Actualizar tokens rotados', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token',  json.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', json.refresh_token);",
+                  "    console.log('✅ Tokens rotados');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204 No Content', () => pm.response.to.have.status(204));",
+                  "pm.collectionVariables.set('access_token', '');",
+                  "console.log('✅ Sesión cerrada. Corre Seed de nuevo para refrescar el token.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Users",
+      "description": "Perfil y billetera del usuario autenticado. Requiere access_token (propagado por Seed automáticamente).",
+      "item": [
+        {
+          "name": "Get Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Campos requeridos presentes', () => {",
+                  "    const json = pm.response.json();",
+                  "    ['id','phone_number','plan','kyc_status','pqc_key_fingerprint'].forEach(f => {",
+                  "        pm.expect(json, `campo ${f}`).to.have.property(f);",
+                  "    });",
+                  "});",
+                  "pm.test('ID coincide con user_id guardado', () => {",
+                  "    const savedId = pm.collectionVariables.get('user_id');",
+                  "    if (savedId) pm.expect(pm.response.json().id).to.equal(savedId);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me"]
+            }
+          }
+        },
+        {
+          "name": "Get Wallet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Wallet tiene saldo sembrado', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.balance_cop).to.be.above(0);",
+                  "    pm.expect(json.currency).to.equal('COP');",
+                  "    pm.expect(json.balance_display).to.include('COP');",
+                  "    console.log('💰 Saldo actual:', json.balance_display);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me/wallet",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me", "wallet"]
+            }
+          }
+        },
+        {
+          "name": "Get Profile — sin auth (debe dar 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Sin token retorna 401 o 403', () => {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💸 Payments",
+      "description": "Flujo completo de pago P2P. El sender tiene $500.000 COP sembrados por Seed. El receiver existe en la BD. El OTP de pago aparece en los logs del backend.",
+      "item": [
+        {
+          "name": "Initiate Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 202 Accepted', () => pm.response.to.have.status(202));",
+                  "",
+                  "pm.test('Guardar tx_id', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('tx_id');",
+                  "    pm.collectionVariables.set('tx_id', json.tx_id);",
+                  "    console.log('✅ tx_id guardado:', json.tx_id);",
+                  "    console.log('📱 Revisa los logs del backend para el OTP de confirmación.');",
+                  "});",
+                  "",
+                  "pm.test('Estado pending_confirmation', () => {",
+                  "    pm.expect(pm.response.json().status).to.equal('pending_confirmation');",
+                  "});",
+                  "",
+                  "pm.test('Quantum Shield activo', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.quantum_shield).to.be.true;",
+                  "    pm.expect(json.pqc_algorithm).to.include('ML');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",   "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiver_phone\": \"{{receiver_phone}}\",\n  \"amount_cop\": 5000000,\n  \"message\": \"Demo Sprint 1 — pago quantum-safe 🔐\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/payments/initiate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "payments", "initiate"]
+            },
+            "description": "`amount_cop` en centavos: 5000000 = $50.000 COP.\n\nDespués de este request el backend envía un OTP por SMS (o lo imprime en logs en dev). Cópialo a la variable `otp_code` antes de confirmar."
+          }
+        },
+        {
+          "name": "Confirm Payment",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Verificar que tenemos tx_id antes de intentar confirmar",
+                  "const txId = pm.collectionVariables.get('tx_id');",
+                  "if (!txId) {",
+                  "    console.warn('⚠️  tx_id vacío. Corre Initiate Payment primero.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Pago completado', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.equal('completed');",
+                  "    console.log('✅ Pago completado:', json.amount_display);",
+                  "});",
+                  "",
+                  "pm.test('Firma ML-DSA-65 en la respuesta', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.ml_dsa_signature_fingerprint).to.not.equal('none');",
+                  "    console.log('🔐 Firma PQC:', json.ml_dsa_signature_fingerprint);",
+                  "});",
+                  "",
+                  "pm.test('Receipt URL generada', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.receipt_url).to.include(json.tx_id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",   "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tx_id\": \"{{tx_id}}\",\n  \"otp_code\": \"{{otp_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/payments/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "payments", "confirm"]
+            },
+            "description": "Confirma el pago con OTP. Actualiza `otp_code` con el código que viste en los logs del backend después de Initiate."
+          }
+        },
+        {
+          "name": "Get Transaction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Detalle completo de transacción', () => {",
+                  "    const json = pm.response.json();",
+                  "    ['tx_id','status','amount_cop','sender_phone','receiver_phone',",
+                  "     'ml_dsa_signature_fingerprint','pqc_algorithm'].forEach(f => {",
+                  "        pm.expect(json, `campo ${f}`).to.have.property(f);",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/payments/{{tx_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "payments", "{{tx_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Payment History (all)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Historial paginado', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.transactions).to.be.an('array');",
+                  "    pm.expect(json).to.have.property('page');",
+                  "    console.log('📋 Transacciones en historial:', json.total);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/payments/history?page=1&page_size=20&direction=all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "payments", "history"],
+              "query": [
+                { "key": "page",      "value": "1"  },
+                { "key": "page_size", "value": "20" },
+                { "key": "direction", "value": "all"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Initiate — receptor inexistente (debe dar 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 — receptor no encontrado', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",   "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiver_phone\": \"+573001111111\",\n  \"amount_cop\": 1000000,\n  \"message\": \"test receptor inexistente\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/payments/initiate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "payments", "initiate"]
+            }
+          }
+        },
+        {
+          "name": "Initiate — saldo insuficiente (debe dar 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 422 — fondos insuficientes', () => pm.response.to.have.status(422));",
+                  "pm.test('Mensaje de error correcto', () => {",
+                  "    pm.expect(pm.response.json().detail).to.include('Saldo');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",   "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiver_phone\": \"{{receiver_phone}}\",\n  \"amount_cop\": 999999999999,\n  \"message\": \"monto imposible\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/payments/initiate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "payments", "initiate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔒 PQC Crypto (B2B)",
+      "description": "API de criptografía post-cuántica. Requiere `X-Nivo-Key` de mínimo 32 caracteres.",
+      "item": [
+        {
+          "name": "List Algorithms",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ML-KEM-768 recomendado', () => {",
+                  "    const kem = pm.response.json().kem;",
+                  "    const rec = kem.find(k => k.recommended);",
+                  "    pm.expect(rec.name).to.include('ML-KEM');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/crypto/algorithms",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "crypto", "algorithms"]
+            }
+          }
+        },
+        {
+          "name": "Sign Data (ML-DSA-65)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const msg = 'Pago Nivo: $50.000 COP → +573009876543 | ' + new Date().toISOString();",
+                  "let hex = '';",
+                  "for (let i = 0; i < msg.length; i++) {",
+                  "    hex += ('0' + msg.charCodeAt(i).toString(16)).slice(-2);",
+                  "}",
+                  "pm.collectionVariables.set('signed_data_hex', hex);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Firma generada con ML-DSA-65', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.algorithm).to.equal('ML-DSA-65');",
+                  "    pm.collectionVariables.set('pqc_signature_hex',  json.signature_hex);",
+                  "    pm.collectionVariables.set('pqc_public_key_hex', json.public_key_hex);",
+                  "    console.log('🔐 Firma guardada. Longitud:', json.signature_hex.length, 'chars hex');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Nivo-Key",  "value": "{{b2b_api_key}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_hex\": \"{{signed_data_hex}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/crypto/sign",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "crypto", "sign"]
+            }
+          }
+        },
+        {
+          "name": "Verify Signature — válida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('valid: true', () => {",
+                  "    pm.expect(pm.response.json().valid).to.be.true;",
+                  "    console.log('✅ Firma válida confirmada');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Nivo-Key",  "value": "{{b2b_api_key}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_hex\": \"{{signed_data_hex}}\",\n  \"signature_hex\": \"{{pqc_signature_hex}}\",\n  \"public_key_hex\": \"{{pqc_public_key_hex}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/crypto/verify",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "crypto", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Verify Signature — datos alterados (debe dar false)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('valid: false para datos alterados', () => {",
+                  "    pm.expect(pm.response.json().valid).to.be.false;",
+                  "    console.log('✅ Manipulación detectada correctamente');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Nivo-Key",  "value": "{{b2b_api_key}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_hex\": \"deadbeefcafe\",\n  \"signature_hex\": \"{{pqc_signature_hex}}\",\n  \"public_key_hex\": \"{{pqc_public_key_hex}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/crypto/verify",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "crypto", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Sign — API Key inválida (debe dar 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Nivo-Key",  "value": "short" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_hex\": \"deadbeef\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/crypto/sign",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "crypto", "sign"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "❤️ Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Sistema healthy con PQC activo', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.equal('healthy');",
+                  "    pm.expect(json.pqc).to.be.true;",
+                  "    console.log('❤️ Sistema operacional. PQC:', json.pqc);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Root Info",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Nivo API operacional', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.service).to.equal('Nivo API');",
+                  "    pm.expect(json.status).to.equal('operational');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"],
+              "path": [""]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

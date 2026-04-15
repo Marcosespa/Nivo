@@ -1,0 +1,266 @@
+{
+  "info": {
+    "_postman_id": "f8b0d89c-7b2a-4c1e-8cf7-1ee5d77d1f11",
+    "name": "Nivo Sprint 1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Coleccion para probar los endpoints cerrados del sprint 1: auth, users, payments, health y crypto."
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000" },
+    { "key": "phone_number", "value": "3101234567" },
+    { "key": "otp_code", "value": "" },
+    { "key": "receiver_phone", "value": "3109999999" },
+    { "key": "amount_cop", "value": "125000" },
+    { "key": "access_token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "payment_tx_id", "value": "" },
+    { "key": "crypto_signature_hex", "value": "" },
+    { "key": "crypto_public_key_hex", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health/pqc",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health/pqc"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/v1/auth/request-otp",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"{{phone_number}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/request-otp"
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/verify-otp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', json.access_token);",
+                  "pm.collectionVariables.set('refresh_token', json.refresh_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"{{phone_number}}\",\n  \"otp_code\": \"{{otp_code}}\",\n  \"device_id\": \"postman-device\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/verify-otp"
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', json.access_token);",
+                  "pm.collectionVariables.set('refresh_token', json.refresh_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/refresh"
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "GET /api/v1/users/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/api/v1/users/me"
+          }
+        },
+        {
+          "name": "GET /api/v1/users/me/wallet",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/api/v1/users/me/wallet"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "POST /api/v1/payments/initiate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('payment_tx_id', json.tx_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiver_phone\": \"{{receiver_phone}}\",\n  \"amount_cop\": {{amount_cop}},\n  \"message\": \"Pago sprint 1\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/payments/initiate"
+          }
+        },
+        {
+          "name": "POST /api/v1/payments/confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tx_id\": \"{{payment_tx_id}}\",\n  \"otp_code\": \"{{otp_code}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/payments/confirm"
+          }
+        },
+        {
+          "name": "GET /api/v1/payments/history",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/api/v1/payments/history"
+          }
+        },
+        {
+          "name": "GET /api/v1/payments/{tx_id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/api/v1/payments/{{payment_tx_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Crypto",
+      "item": [
+        {
+          "name": "GET /api/v1/crypto/algorithms",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/crypto/algorithms"
+          }
+        },
+        {
+          "name": "POST /api/v1/crypto/sign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('crypto_signature_hex', json.signature_hex);",
+                  "pm.collectionVariables.set('crypto_public_key_hex', json.public_key_hex);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_hex\": \"6e69766f2d737072696e742d31\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/crypto/sign"
+          }
+        },
+        {
+          "name": "POST /api/v1/crypto/verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_hex\": \"6e69766f2d737072696e742d31\",\n  \"signature_hex\": \"{{crypto_signature_hex}}\",\n  \"public_key_hex\": \"{{crypto_public_key_hex}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/crypto/verify"
+          }
+        }
+      ]
+    }
+  ]
+}

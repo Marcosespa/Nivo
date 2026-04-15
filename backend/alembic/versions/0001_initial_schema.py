@@ -22,19 +22,7 @@ depends_on = None
 def upgrade() -> None:
     """Create all initial tables."""
 
-    # Create ENUM types
-    sa.Enum("free", "plus", "pro", name="userplanenum").create(op.get_bind())
-    sa.Enum("pending", "verified", "rejected", name="kycstatusenum").create(op.get_bind())
-    sa.Enum("visual_only", "partner_ledger", "sedpe", "bank_partner", name="custodymodeenum").create(op.get_bind())
-    sa.Enum("pending", "settled", "failed", "reversed", name="settlementstatusenum").create(op.get_bind())
-    sa.Enum("pse", "ach", "bank_partner", "internal", name="settlementrailenum").create(op.get_bind())
-    sa.Enum("pending", "pending_confirmation", "completed", "failed", "reversed", name="transactionstatusenum").create(op.get_bind())
-    sa.Enum("login", "payment", "kyc", name="otppurposeenum").create(op.get_bind())
-    sa.Enum("basic", "pro", "enterprise", name="merchantplanenum").create(op.get_bind())
-    sa.Enum("visual_goal", "partner_subaccount", "custodial", name="savingsmodeenum").create(op.get_bind())
-    sa.Enum("fx", "crypto", "stock", "etf", name="producttypeenum").create(op.get_bind())
-    sa.Enum("buy", "sell", "convert", name="sideenum").create(op.get_bind())
-    sa.Enum("pending", "submitted", "executed", "failed", "cancelled", name="executionstatusenum").create(op.get_bind())
+    op.execute('CREATE EXTENSION IF NOT EXISTS "pgcrypto";')
 
     # users table
     op.create_table(
@@ -218,17 +206,3 @@ def downgrade() -> None:
     op.drop_table("savings_pockets")
     op.drop_table("wallets")
     op.drop_table("users")
-
-    # Drop ENUMs
-    sa.Enum("free", "plus", "pro", name="userplanenum").drop(op.get_bind())
-    sa.Enum("pending", "verified", "rejected", name="kycstatusenum").drop(op.get_bind())
-    sa.Enum("visual_only", "partner_ledger", "sedpe", "bank_partner", name="custodymodeenum").drop(op.get_bind())
-    sa.Enum("pending", "settled", "failed", "reversed", name="settlementstatusenum").drop(op.get_bind())
-    sa.Enum("pse", "ach", "bank_partner", "internal", name="settlementrailenum").drop(op.get_bind())
-    sa.Enum("pending", "pending_confirmation", "completed", "failed", "reversed", name="transactionstatusenum").drop(op.get_bind())
-    sa.Enum("login", "payment", "kyc", name="otppurposeenum").drop(op.get_bind())
-    sa.Enum("basic", "pro", "enterprise", name="merchantplanenum").drop(op.get_bind())
-    sa.Enum("visual_goal", "partner_subaccount", "custodial", name="savingsmodeenum").drop(op.get_bind())
-    sa.Enum("fx", "crypto", "stock", "etf", name="producttypeenum").drop(op.get_bind())
-    sa.Enum("buy", "sell", "convert", name="sideenum").drop(op.get_bind())
-    sa.Enum("pending", "submitted", "executed", "failed", "cancelled", name="executionstatusenum").drop(op.get_bind())

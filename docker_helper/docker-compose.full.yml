@@ -1,0 +1,91 @@
+# Nivo — Docker Helper: Stack completo (API + PostgreSQL + Redis)
+# Ideal para demo, QA o cuando no quieres instalar Python localmente.
+#
+# Uso:
+#   docker compose -f docker_helper/docker-compose.full.yml up --build
+#   docker compose -f docker_helper/docker-compose.full.yml down
+#
+# La API queda disponible en:
+#   http://localhost:8000
+#   http://localhost:8000/docs  (Swagger UI)
+
+services:
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: nivo-api
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: development
+      DEBUG: "true"
+      DATABASE_URL: postgresql+asyncpg://Nivo:Nivo@postgres:5432/Nivo_dev
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: dev_secret_key_change_in_production_32c
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: "30"
+      PQC_ALGORITHM: ML-KEM-768
+      HYBRID_MODE: "true"
+      PQC_SECURITY_LEVEL: "3"
+      TX_MIN_AMOUNT: "100"
+      TX_DAILY_LIMIT: "300000000"
+      # Twilio (dejar vacío para modo mock en dev)
+      TWILIO_ACCOUNT_SID: ""
+      TWILIO_AUTH_TOKEN: ""
+      TWILIO_PHONE_NUMBER: ""
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/app   # hot-reload en desarrollo
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "
+        alembic upgrade head &&
+        uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+      "
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: nivo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: Nivo
+      POSTGRES_PASSWORD: Nivo
+      POSTGRES_DB: Nivo_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - nivo_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U Nivo -d Nivo_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: nivo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - nivo_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  nivo_postgres_data:
+    driver: local
+  nivo_redis_data:
+    driver: local

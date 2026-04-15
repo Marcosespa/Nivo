@@ -6,11 +6,20 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 import redis.asyncio as redis
+import bcrypt as _bcrypt
 from passlib.context import CryptContext
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# passlib 1.7.x expects bcrypt.__about__.__version__, removed in newer bcrypt versions.
+# Provide a minimal compatibility shim to avoid runtime warnings/errors.
+if not hasattr(_bcrypt, "__about__"):
+    class _BcryptAbout:
+        __version__ = getattr(_bcrypt, "__version__", "unknown")
+
+    _bcrypt.__about__ = _BcryptAbout()  # type: ignore[attr-defined]
 
 # Bcrypt context for hashing OTPs
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
