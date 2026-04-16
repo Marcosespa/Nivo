@@ -33,7 +33,14 @@ class OTP(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     phone_number: Mapped[str] = mapped_column(String(15), nullable=False, index=True)
     otp_hash: Mapped[str] = mapped_column(String(64), nullable=False)  # Bcrypt hash (no SHA)
-    purpose: Mapped[OTPPurposeEnum] = mapped_column(SQLEnum(OTPPurposeEnum), nullable=False)
+    purpose: Mapped[OTPPurposeEnum] = mapped_column(
+        SQLEnum(
+            OTPPurposeEnum,
+            name="otppurposeenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        nullable=False,
+    )
     used: Mapped[bool] = mapped_column(Boolean, default=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

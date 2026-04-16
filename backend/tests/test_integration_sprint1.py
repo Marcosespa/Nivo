@@ -341,14 +341,22 @@ class TestRefreshToken:
 
 class TestLogout:
 
-    async def test_logout_returns_204(self, authed_client, access_token):
-        resp = await authed_client.post("/api/v1/auth/logout")
-        assert resp.status_code == 204
+    async def test_logout_returns_200(self, client, test_user):
+        refresh_token = create_refresh_token(
+            user_id=test_user.id,
+            phone_number=test_user.phone_number,
+            plan="free",
+        )
+        resp = await client.post(
+            "/api/v1/auth/logout",
+            json={"refresh_token": refresh_token},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["message"] == "Sesión cerrada correctamente"
 
-    async def test_logout_without_token_returns_4xx(self, client):
-        """Sin Bearer token → 401 o 403 (ambos son correctos en FastAPI)."""
+    async def test_logout_without_body_returns_422(self, client):
         resp = await client.post("/api/v1/auth/logout")
-        assert resp.status_code in (401, 403)
+        assert resp.status_code == 422
 
 
 # ─── Users: Profile ───────────────────────────────────────────────────────────

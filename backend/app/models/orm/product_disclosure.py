@@ -34,7 +34,14 @@ class ProductDisclosure(Base):
 
     # Campos principales
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    product_type: Mapped[ProductTypeEnum] = mapped_column(SQLEnum(ProductTypeEnum), nullable=False)
+    product_type: Mapped[ProductTypeEnum] = mapped_column(
+        SQLEnum(
+            ProductTypeEnum,
+            name="producttypeenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        nullable=False,
+    )
     version: Mapped[str] = mapped_column(String(30), nullable=False)  # "1.0.0", "1.1.0", "2.0.0"
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)  # SHA-256 del content
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

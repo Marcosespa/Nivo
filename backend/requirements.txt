@@ -22,7 +22,8 @@ redis[asyncio]==5.2.0
 # IMPORTANTE: liboqs-python requiere que liboqs esté instalado en el sistema.
 # Ver: https://github.com/open-quantum-safe/liboqs-python
 # Instalación: pip install liboqs-python (después de instalar liboqs C)
-liboqs-python==0.10.1
+# 0.14.1 es la versión publicada disponible para Python 3.11 en el build Docker actual.
+liboqs-python==0.14.1
 
 # ─── Cryptography clásica (para modo híbrido X25519 + AES-GCM) ───────────────
 cryptography==43.0.3

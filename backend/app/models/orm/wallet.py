@@ -35,7 +35,14 @@ class Wallet(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="COP")
     display_balance_cop: Mapped[int] = mapped_column(BigInteger, default=0)  # centavos
-    custody_mode: Mapped[CustodyModeEnum] = mapped_column(SQLEnum(CustodyModeEnum), default=CustodyModeEnum.VISUAL_ONLY)
+    custody_mode: Mapped[CustodyModeEnum] = mapped_column(
+        SQLEnum(
+            CustodyModeEnum,
+            name="custodymodeenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        default=CustodyModeEnum.VISUAL_ONLY,
+    )
     provider_account_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
     is_frozen: Mapped[bool] = mapped_column(Boolean, default=False)
     last_updated: Mapped[datetime] = mapped_column(

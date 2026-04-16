@@ -93,6 +93,7 @@ class PaymentInitiateResponse(BaseModel):
     quantum_shield: bool  # Siempre True en Nivo
     pqc_algorithm: str
     expires_in_seconds: int = 300   # 5 minutos para confirmar
+    dev_otp: str | None = None
 
 
 class PaymentConfirmRequest(BaseModel):
@@ -213,6 +214,7 @@ async def initiate_payment(
         quantum_shield=True,
         pqc_algorithm=settings.PQC_ALGORITHM,
         expires_in_seconds=result["expires_in_seconds"],
+        dev_otp=otp_code if settings.ENVIRONMENT == "development" else None,
     )
 
 

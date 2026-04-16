@@ -36,7 +36,14 @@ class SavingsPocket(Base):
     target_amount_cop: Mapped[int | None] = mapped_column(BigInteger, nullable=True)  # Meta de ahorro
     display_balance_cop: Mapped[int] = mapped_column(BigInteger, default=0)
     provider_subaccount_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    mode: Mapped[SavingsModeEnum] = mapped_column(SQLEnum(SavingsModeEnum), default=SavingsModeEnum.VISUAL_GOAL)
+    mode: Mapped[SavingsModeEnum] = mapped_column(
+        SQLEnum(
+            SavingsModeEnum,
+            name="savingsmodeenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        default=SavingsModeEnum.VISUAL_GOAL,
+    )
     ml_dsa_last_state_signature: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -57,16 +57,38 @@ class Transaction(Base):
     sender_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
     receiver_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
     amount_cop: Mapped[int] = mapped_column(BigInteger, nullable=False)  # centavos
-    status: Mapped[TransactionStatusEnum] = mapped_column(SQLEnum(TransactionStatusEnum), default=TransactionStatusEnum.PENDING, index=True)
+    status: Mapped[TransactionStatusEnum] = mapped_column(
+        SQLEnum(
+            TransactionStatusEnum,
+            name="transactionstatusenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        default=TransactionStatusEnum.PENDING,
+        index=True,
+    )
 
     # Firma cuántica
     ml_dsa_signature: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     signature_key_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("pqc_keys.id", ondelete="RESTRICT"), nullable=False)
 
     # Regulatorio / Settlement
-    rail: Mapped[SettlementRailEnum] = mapped_column(SQLEnum(SettlementRailEnum), default=SettlementRailEnum.INTERNAL)
+    rail: Mapped[SettlementRailEnum] = mapped_column(
+        SQLEnum(
+            SettlementRailEnum,
+            name="settlementrailenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        default=SettlementRailEnum.INTERNAL,
+    )
     provider_reference: Mapped[str | None] = mapped_column(String(120), nullable=True)  # ID del proveedor (PSE, ACH, etc)
-    settlement_status: Mapped[SettlementStatusEnum] = mapped_column(SQLEnum(SettlementStatusEnum), default=SettlementStatusEnum.PENDING)
+    settlement_status: Mapped[SettlementStatusEnum] = mapped_column(
+        SQLEnum(
+            SettlementStatusEnum,
+            name="settlementstatusenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        default=SettlementStatusEnum.PENDING,
+    )
 
     # Metadata
     message: Mapped[str | None] = mapped_column(String(500), nullable=True)

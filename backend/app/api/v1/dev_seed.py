@@ -19,7 +19,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete, or_
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -27,6 +27,7 @@ from app.core.security import create_access_token, create_refresh_token
 from app.models.orm.user import User as UserORM
 from app.models.orm.wallet import Wallet as WalletORM
 from app.models.orm.pqc_key import PQCKey as PQCKeyORM
+from app.models.orm.transaction import Transaction as TransactionORM
 from app.services.auth_service import AuthService
 from app.utils.validators import validate_colombian_phone
 
@@ -61,6 +62,10 @@ class SeedResponse(BaseModel):
     sender: SeedUserInfo
     receiver: SeedUserInfo
     tip: str
+
+
+class SeedCleanupResponse(BaseModel):
+    message: str
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -170,15 +175,18 @@ async def seed_test_data(
 
 @router.delete(
     "/seed",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=SeedCleanupResponse,
+    status_code=status.HTTP_200_OK,
     summary="⚠️ Limpiar datos de prueba (SOLO DEV)",
     description="Elimina los usuarios de prueba creados por /seed. Solo DEV.",
 )
 async def clear_seed_data(
     request: SeedRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> None:
+) -> SeedCleanupResponse:
     """Elimina los usuarios de prueba para un reset limpio."""
+    user_ids: list[uuid.UUID] = []
+
     for phone in [request.sender_phone, request.receiver_phone]:
         try:
             phone_normalized = validate_colombian_phone(phone)
@@ -189,6 +197,20 @@ async def clear_seed_data(
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
         if user:
-            await db.delete(user)
+            user_ids.append(user.id)
+
+    if user_ids:
+        await db.execute(
+            delete(TransactionORM).where(
+                or_(
+                    TransactionORM.sender_id.in_(user_ids),
+                    TransactionORM.receiver_id.in_(user_ids),
+                )
+            )
+        )
+        await db.execute(delete(PQCKeyORM).where(PQCKeyORM.user_id.in_(user_ids)))
+        await db.execute(delete(WalletORM).where(WalletORM.user_id.in_(user_ids)))
+        await db.execute(delete(UserORM).where(UserORM.id.in_(user_ids)))
 
     await db.commit()
+    return SeedCleanupResponse(message="✅ Usuarios de prueba eliminados")

@@ -34,7 +34,14 @@ class BankAccount(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     bank_code: Mapped[str] = mapped_column(String(10), nullable=False)  # "001", "051", etc
-    account_type: Mapped[AccountTypeEnum] = mapped_column(SQLEnum(AccountTypeEnum), nullable=False)
+    account_type: Mapped[AccountTypeEnum] = mapped_column(
+        SQLEnum(
+            AccountTypeEnum,
+            name="accounttypeenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        nullable=False,
+    )
     account_number_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)  # AES-256-GCM
     account_holder_name: Mapped[str] = mapped_column(String(255), nullable=False)
 

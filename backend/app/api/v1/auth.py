@@ -78,6 +78,10 @@ class LogoutRequest(BaseModel):
     refresh_token: str
 
 
+class LogoutResponse(BaseModel):
+    message: str
+
+
 # ─── Dependencia: Redis ────────────────────────────────────────────────────────
 
 async def get_redis() -> redis.Redis:
@@ -323,14 +327,15 @@ async def refresh_token(
 
 @router.post(
     "/logout",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=LogoutResponse,
+    status_code=status.HTTP_200_OK,
     summary="Cerrar sesión",
     description="Invalida el refresh token del usuario.",
 )
 async def logout(
     request: LogoutRequest,
     redis_client: Annotated[redis.Redis, Depends(get_redis)],
-):
+) -> LogoutResponse:
     """
     Cierra la sesión invalidando el refresh token del usuario.
     """
@@ -357,4 +362,4 @@ async def logout(
         1,
     )
     await auth_service.invalidate_refresh_token(redis_client, jti, ttl)
-    return None
+    return LogoutResponse(message="Sesión cerrada correctamente")

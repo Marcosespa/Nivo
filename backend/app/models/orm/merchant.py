@@ -31,7 +31,14 @@ class Merchant(Base):
     owner_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     business_name: Mapped[str] = mapped_column(String(255), nullable=False)
     nit: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)  # NIT opcional
-    plan: Mapped[MerchantPlanEnum] = mapped_column(SQLEnum(MerchantPlanEnum), default=MerchantPlanEnum.BASIC)
+    plan: Mapped[MerchantPlanEnum] = mapped_column(
+        SQLEnum(
+            MerchantPlanEnum,
+            name="merchantplanenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        default=MerchantPlanEnum.BASIC,
+    )
     qr_code_signature: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)  # Firma del código QR
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(

@@ -52,15 +52,36 @@ class PartnerOrder(Base):
     # Campos principales
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
-    product_type: Mapped[ProductTypeEnum] = mapped_column(SQLEnum(ProductTypeEnum), nullable=False)
+    product_type: Mapped[ProductTypeEnum] = mapped_column(
+        SQLEnum(
+            ProductTypeEnum,
+            name="producttypeenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        nullable=False,
+    )
     partner: Mapped[str] = mapped_column(String(80), nullable=False)  # "Criptoyá", "IMC FX", etc.
     partner_order_id: Mapped[str | None] = mapped_column(String(120), nullable=True)  # ID del proveedor
     instrument_symbol: Mapped[str] = mapped_column(String(30), nullable=False)  # "BTC", "EURUSD", "AAPL"
-    side: Mapped[SideEnum] = mapped_column(SQLEnum(SideEnum), nullable=False)
+    side: Mapped[SideEnum] = mapped_column(
+        SQLEnum(
+            SideEnum,
+            name="sideenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        nullable=False,
+    )
     notional_amount: Mapped[int] = mapped_column(BigInteger, nullable=False)  # En centavos
     source_currency: Mapped[str] = mapped_column(String(10), nullable=False)  # "COP", "USD"
     target_currency: Mapped[str] = mapped_column(String(10), nullable=False)  # "BTC", "EUR", etc.
-    execution_status: Mapped[ExecutionStatusEnum] = mapped_column(SQLEnum(ExecutionStatusEnum), default=ExecutionStatusEnum.PENDING)
+    execution_status: Mapped[ExecutionStatusEnum] = mapped_column(
+        SQLEnum(
+            ExecutionStatusEnum,
+            name="executionstatusenum",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        default=ExecutionStatusEnum.PENDING,
+    )
 
     # Firma y riesgos
     risk_disclosure_version: Mapped[str] = mapped_column(String(30), nullable=False)  # "1.0.0", "2.1.0"

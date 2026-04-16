@@ -101,7 +101,8 @@ async def test_refresh_rotation_and_logout_blacklist(client, created_user):
         "/api/v1/auth/logout",
         json={"refresh_token": refresh_payload["refresh_token"]},
     )
-    assert logout_response.status_code == 204
+    assert logout_response.status_code == 200
+    assert logout_response.json()["message"] == "Sesión cerrada correctamente"
 
     reused = await client.post(
         "/api/v1/auth/refresh",

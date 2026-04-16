@@ -17,25 +17,12 @@ services:
       dockerfile: Dockerfile
     container_name: nivo-api
     restart: unless-stopped
+    env_file:
+      - ../backend/.env.docker.example
     environment:
-      ENVIRONMENT: development
-      DEBUG: "true"
-      DATABASE_URL: postgresql+asyncpg://Nivo:Nivo@postgres:5432/Nivo_dev
-      REDIS_URL: redis://redis:6379/0
-      JWT_SECRET_KEY: dev_secret_key_change_in_production_32c
-      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "30"
-      JWT_REFRESH_TOKEN_EXPIRE_DAYS: "30"
-      PQC_ALGORITHM: ML-KEM-768
-      HYBRID_MODE: "true"
-      PQC_SECURITY_LEVEL: "3"
-      TX_MIN_AMOUNT: "100"
-      TX_DAILY_LIMIT: "300000000"
-      # Twilio (dejar vacío para modo mock en dev)
-      TWILIO_ACCOUNT_SID: ""
-      TWILIO_AUTH_TOKEN: ""
-      TWILIO_PHONE_NUMBER: ""
+      PYTHONUNBUFFERED: "1"
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ../backend:/app   # hot-reload en desarrollo
     depends_on:
@@ -46,7 +33,7 @@ services:
     command: >
       sh -c "
         alembic upgrade head &&
-        uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+        uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --log-level debug --access-log
       "
 
   postgres:
@@ -84,8 +71,27 @@ services:
       retries: 10
       start_period: 5s
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: nivo-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@nivo.co
+      PGADMIN_DEFAULT_PASSWORD: nivo_admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - nivo_pgadmin_data:/var/lib/pgadmin
+
 volumes:
   nivo_postgres_data:
     driver: local
   nivo_redis_data:
+    driver: local
+  nivo_pgadmin_data:
     driver: local

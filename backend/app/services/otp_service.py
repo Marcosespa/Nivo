@@ -3,26 +3,14 @@
 from __future__ import annotations
 import secrets
 import logging
-from datetime import datetime, timedelta, timezone
+import hashlib
+import hmac
 
 import redis.asyncio as redis
-import bcrypt as _bcrypt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-
-# passlib 1.7.x expects bcrypt.__about__.__version__, removed in newer bcrypt versions.
-# Provide a minimal compatibility shim to avoid runtime warnings/errors.
-if not hasattr(_bcrypt, "__about__"):
-    class _BcryptAbout:
-        __version__ = getattr(_bcrypt, "__version__", "unknown")
-
-    _bcrypt.__about__ = _BcryptAbout()  # type: ignore[attr-defined]
-
-# Bcrypt context for hashing OTPs
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class OTPService:
@@ -40,6 +28,17 @@ class OTPService:
         self.max_attempts = 3
         self.rate_limit_attempts = 3
         self.rate_limit_window = 3600  # 1 hora
+
+    def _hash_otp(self, phone_number: str, purpose: str, otp_code: str) -> str:
+        """
+        Deriva un hash estable del OTP para almacenamiento temporal en Redis.
+
+        Usamos HMAC-SHA256 con JWT_SECRET_KEY para evitar depender del backend
+        bcrypt dentro del contenedor de desarrollo.
+        """
+        payload = f"{phone_number}:{purpose}:{otp_code}".encode("utf-8")
+        key = settings.JWT_SECRET_KEY.encode("utf-8")
+        return hmac.new(key, payload, hashlib.sha256).hexdigest()
 
     async def generate_and_store(self, phone_number: str, purpose: str) -> str:
         """
@@ -68,7 +67,7 @@ class OTPService:
         otp_code = str(secrets.randbelow(1000000)).zfill(6)
 
         # Hashear y almacenar en Redis
-        otp_hash = pwd_context.hash(otp_code)
+        otp_hash = self._hash_otp(phone_number, purpose, otp_code)
         otp_key = f"otp:{phone_number}:{purpose}"
         await self.redis.setex(otp_key, self.otp_ttl, otp_hash)
 
@@ -117,7 +116,8 @@ class OTPService:
         otp_hash = otp_hash.decode() if isinstance(otp_hash, bytes) else otp_hash
 
         # Verificar código
-        is_valid = pwd_context.verify(otp_code, otp_hash)
+        expected_hash = self._hash_otp(phone_number, purpose, otp_code)
+        is_valid = hmac.compare_digest(expected_hash, otp_hash)
 
         if is_valid:
             # Marcar como usado

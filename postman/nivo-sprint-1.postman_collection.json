@@ -1,40 +1,209 @@
 {
   "info": {
-    "_postman_id": "f8b0d89c-7b2a-4c1e-8cf7-1ee5d77d1f11",
-    "name": "Nivo Sprint 1",
+    "_postman_id": "0bdb63b8-0a4f-4c2d-9e9a-a3a5d726a9dd",
+    "name": "Nivo Sprint 0 y 1",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Coleccion para probar los endpoints cerrados del sprint 1: auth, users, payments, health y crypto."
+    "description": "Coleccion completa para validar los fixes del sprint 0 y las implementaciones del sprint 1. Incluye health, crypto, auth OTP, users, payments y helpers de seed en development."
   },
   "variable": [
-    { "key": "base_url", "value": "http://127.0.0.1:8000" },
+    { "key": "base_url", "value": "http://127.0.0.1:8001" },
     { "key": "phone_number", "value": "3101234567" },
     { "key": "otp_code", "value": "" },
-    { "key": "receiver_phone", "value": "3109999999" },
+    { "key": "receiver_phone", "value": "3009876543" },
     { "key": "amount_cop", "value": "125000" },
     { "key": "access_token", "value": "" },
     { "key": "refresh_token", "value": "" },
     { "key": "payment_tx_id", "value": "" },
     { "key": "crypto_signature_hex", "value": "" },
-    { "key": "crypto_public_key_hex", "value": "" }
+    { "key": "crypto_public_key_hex", "value": "" },
+    { "key": "seed_sender_phone", "value": "+573001234567" },
+    { "key": "seed_receiver_phone", "value": "+573009876543" },
+    { "key": "seed_balance_cop", "value": "50000000" },
+    { "key": "seed_sender_access_token", "value": "" },
+    { "key": "seed_sender_refresh_token", "value": "" },
+    { "key": "seed_receiver_access_token", "value": "" },
+    { "key": "seed_receiver_refresh_token", "value": "" },
+    { "key": "bank_account_id", "value": "" },
+    { "key": "verification_amount_cop", "value": "" }
   ],
   "item": [
     {
-      "name": "Health",
+      "name": "00. Health y Root",
       "item": [
+        {
+          "name": "GET /",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/"
+          }
+        },
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health"
+          }
+        },
         {
           "name": "GET /health/pqc",
           "request": {
             "method": "GET",
             "url": "{{base_url}}/health/pqc"
           }
+        },
+        {
+          "name": "GET /health/ready",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health/ready"
+          }
+        },
+        {
+          "name": "GET /health/live",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health/live"
+          }
         }
       ]
     },
     {
-      "name": "Auth",
+      "name": "01. Dev Seed Helpers",
+      "item": [
+        {
+          "name": "POST /api/v1/dev/seed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('seed_sender_phone', json.sender.phone_number);",
+                  "pm.collectionVariables.set('seed_receiver_phone', json.receiver.phone_number);",
+                  "pm.collectionVariables.set('receiver_phone', json.receiver.phone_number);",
+                  "pm.collectionVariables.set('seed_sender_access_token', json.sender.access_token);",
+                  "pm.collectionVariables.set('seed_sender_refresh_token', json.sender.refresh_token);",
+                  "pm.collectionVariables.set('seed_receiver_access_token', json.receiver.access_token);",
+                  "pm.collectionVariables.set('seed_receiver_refresh_token', json.receiver.refresh_token);",
+                  "pm.collectionVariables.set('access_token', json.sender.access_token);",
+                  "pm.collectionVariables.set('refresh_token', json.sender.refresh_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sender_phone\": \"{{seed_sender_phone}}\",\n  \"receiver_phone\": \"{{seed_receiver_phone}}\",\n  \"seed_balance_cop\": {{seed_balance_cop}}\n}"
+            },
+            "url": "{{base_url}}/api/v1/dev/seed"
+          }
+        },
+        {
+          "name": "DELETE /api/v1/dev/seed",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sender_phone\": \"{{seed_sender_phone}}\",\n  \"receiver_phone\": \"{{seed_receiver_phone}}\",\n  \"seed_balance_cop\": {{seed_balance_cop}}\n}"
+            },
+            "url": "{{base_url}}/api/v1/dev/seed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Sprint 0 - Crypto y Hardening",
+      "item": [
+        {
+          "name": "GET /api/v1/crypto/algorithms",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/crypto/algorithms"
+          }
+        },
+        {
+          "name": "POST /api/v1/crypto/sign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('crypto_signature_hex', json.signature_hex);",
+                  "pm.collectionVariables.set('crypto_public_key_hex', json.public_key_hex);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_hex\": \"6e69766f2d737072696e742d302d616e642d31\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/crypto/sign"
+          }
+        },
+        {
+          "name": "POST /api/v1/crypto/sign (debe rechazar signing_key_hex)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_hex\": \"6e69766f2d737072696e742d302d616e642d31\",\n  \"signing_key_hex\": \"deadbeef\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/crypto/sign"
+          }
+        },
+        {
+          "name": "POST /api/v1/crypto/verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_hex\": \"6e69766f2d737072696e742d302d616e642d31\",\n  \"signature_hex\": \"{{crypto_signature_hex}}\",\n  \"public_key_hex\": \"{{crypto_public_key_hex}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/crypto/verify"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Auth OTP",
       "item": [
         {
           "name": "POST /api/v1/auth/request-otp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.dev_otp) { pm.collectionVariables.set('otp_code', json.dev_otp); }"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -118,7 +287,7 @@
       ]
     },
     {
-      "name": "Users",
+      "name": "04. Users",
       "item": [
         {
           "name": "GET /api/v1/users/me",
@@ -143,7 +312,7 @@
       ]
     },
     {
-      "name": "Payments",
+      "name": "05. Payments",
       "item": [
         {
           "name": "POST /api/v1/payments/initiate",
@@ -167,13 +336,25 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receiver_phone\": \"{{receiver_phone}}\",\n  \"amount_cop\": {{amount_cop}},\n  \"message\": \"Pago sprint 1\"\n}"
+              "raw": "{\n  \"receiver_phone\": \"{{receiver_phone}}\",\n  \"amount_cop\": {{amount_cop}},\n  \"message\": \"Pago manual sprint 1\"\n}"
             },
             "url": "{{base_url}}/api/v1/payments/initiate"
           }
         },
         {
           "name": "POST /api/v1/payments/confirm",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.tx_id) { pm.collectionVariables.set('payment_tx_id', json.tx_id); }"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -205,59 +386,6 @@
               { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "url": "{{base_url}}/api/v1/payments/{{payment_tx_id}}"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Crypto",
-      "item": [
-        {
-          "name": "GET /api/v1/crypto/algorithms",
-          "request": {
-            "method": "GET",
-            "url": "{{base_url}}/api/v1/crypto/algorithms"
-          }
-        },
-        {
-          "name": "POST /api/v1/crypto/sign",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const json = pm.response.json();",
-                  "pm.collectionVariables.set('crypto_signature_hex', json.signature_hex);",
-                  "pm.collectionVariables.set('crypto_public_key_hex', json.public_key_hex);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"data_hex\": \"6e69766f2d737072696e742d31\"\n}"
-            },
-            "url": "{{base_url}}/api/v1/crypto/sign"
-          }
-        },
-        {
-          "name": "POST /api/v1/crypto/verify",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"data_hex\": \"6e69766f2d737072696e742d31\",\n  \"signature_hex\": \"{{crypto_signature_hex}}\",\n  \"public_key_hex\": \"{{crypto_public_key_hex}}\"\n}"
-            },
-            "url": "{{base_url}}/api/v1/crypto/verify"
           }
         }
       ]
