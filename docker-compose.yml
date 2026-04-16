@@ -1,0 +1,154 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Nivo — Stack Completo
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Levanta TODO el stack con un solo comando desde la raíz del proyecto:
+#
+#   docker compose up --build
+#
+# Servicios que levanta:
+#   • frontend   → http://localhost:3000   (React + Vite + Tailwind)
+#   • backend    → http://localhost:8001   (FastAPI + PQC)
+#   • postgres   → localhost:5432          (PostgreSQL 16)
+#   • redis      → localhost:6379          (Redis 7)
+#   • pgadmin    → http://localhost:5050   (Panel DB — admin@nivo.co / nivo_admin)
+#
+# Para bajar todo:
+#   docker compose down
+#
+# Para bajar y borrar volúmenes (reset completo):
+#   docker compose down -v
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nivo-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - nivo-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/nginx-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── Backend ───────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nivo-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env.docker.example
+    environment:
+      PYTHONUNBUFFERED: "1"
+      ALLOWED_ORIGINS: '["http://localhost:3000","http://localhost:8001","http://frontend","https://nivo.co"]'
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - nivo-net
+    command: >
+      sh -c "
+        alembic upgrade head &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level info
+      "
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: nivo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: Nivo
+      POSTGRES_PASSWORD: Nivo
+      POSTGRES_DB: Nivo_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - nivo_postgres_data:/var/lib/postgresql/data
+      - ./docker_helper/init-scripts:/docker-entrypoint-initdb.d:ro
+    networks:
+      - nivo-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U Nivo -d Nivo_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ── Redis ─────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: nivo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - nivo_redis_data:/data
+    networks:
+      - nivo-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  # ── pgAdmin ───────────────────────────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: nivo-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@nivo.co
+      PGADMIN_DEFAULT_PASSWORD: nivo_admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - nivo_pgadmin_data:/var/lib/pgadmin
+    networks:
+      - nivo-net
+
+# ── Redes ──────────────────────────────────────────────────────────────────────
+networks:
+  nivo-net:
+    driver: bridge
+    name: nivo-network
+
+# ── Volúmenes ──────────────────────────────────────────────────────────────────
+volumes:
+  nivo_postgres_data:
+    driver: local
+  nivo_redis_data:
+    driver: local
+  nivo_pgadmin_data:
+    driver: local

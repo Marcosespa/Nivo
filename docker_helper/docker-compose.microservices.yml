@@ -1,0 +1,87 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Nivo — Microservicios (Sprint 4+)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Este archivo agrupa los microservicios auxiliares del ecosistema Nivo.
+# Los servicios marcados como "planned" se activarán en sprints futuros.
+#
+# Servicios actuales:
+#   • mailhog     → http://localhost:8025  (Captura emails en desarrollo)
+#
+# Servicios planeados (Sprint 4-6):
+#   • pqc-gateway   → Servicio PQC B2B dedicado
+#   • kyc-worker    → Worker asíncrono de verificación KYC (Truora)
+#   • sms-worker    → Worker Twilio / SMS gateway
+#   • notifications → Firebase push notifications worker
+#   • fx-service    → Conversión de divisas (cuando ENABLE_FX_EXCHANGE=true)
+#
+# Uso:
+#   docker compose -f docker_helper/docker-compose.microservices.yml up -d
+#   docker compose -f docker_helper/docker-compose.microservices.yml down
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── Email catcher (desarrollo) ────────────────────────────────────────────────
+  # Captura todos los emails enviados desde el backend. No los entrega realmente.
+  # Útil para verificar notificaciones sin Twilio/SMTP real.
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: nivo-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP (el backend apunta aquí)
+      - "8025:8025"   # Web UI para ver emails capturados
+    networks:
+      - nivo-micro-net
+
+  # ── PQC Gateway (Sprint 4 — PLANNED) ─────────────────────────────────────────
+  # Microservicio dedicado para la API B2B de criptografía post-cuántica.
+  # Se separará del monolito FastAPI cuando el tráfico B2B justifique el split.
+  #
+  # pqc-gateway:
+  #   build:
+  #     context: ../services/pqc-gateway
+  #     dockerfile: Dockerfile
+  #   container_name: nivo-pqc-gateway
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8010:8010"
+  #   networks:
+  #     - nivo-micro-net
+
+  # ── KYC Worker (Sprint 5 — PLANNED) ──────────────────────────────────────────
+  # Worker Celery para procesar verificaciones KYC de Truora en background.
+  # Evita bloquear el request cycle del API principal.
+  #
+  # kyc-worker:
+  #   build:
+  #     context: ../backend
+  #     dockerfile: Dockerfile
+  #   container_name: nivo-kyc-worker
+  #   restart: unless-stopped
+  #   command: celery -A app.workers.kyc worker --loglevel=info
+  #   env_file:
+  #     - ../backend/.env.docker.example
+  #   networks:
+  #     - nivo-micro-net
+
+  # ── SMS Worker (Sprint 5 — PLANNED) ──────────────────────────────────────────
+  # Worker para enviar OTPs y notificaciones vía Twilio sin bloquear el API.
+  #
+  # sms-worker:
+  #   build:
+  #     context: ../backend
+  #     dockerfile: Dockerfile
+  #   container_name: nivo-sms-worker
+  #   restart: unless-stopped
+  #   command: celery -A app.workers.sms worker --loglevel=info
+  #   env_file:
+  #     - ../backend/.env.docker.example
+  #   networks:
+  #     - nivo-micro-net
+
+networks:
+  nivo-micro-net:
+    driver: bridge
+    name: nivo-microservices-network

@@ -1,0 +1,124 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Nivo — Solo Backend (API + Bases de Datos)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Útil para probar la API con Postman/Insomnia sin levantar el frontend.
+# Incluye: FastAPI + PostgreSQL + Redis + pgAdmin.
+#
+# Uso:
+#   docker compose -f docker_helper/docker-compose.backend.yml up --build
+#   docker compose -f docker_helper/docker-compose.backend.yml down
+#
+# Servicios:
+#   • backend    → http://localhost:8001        (FastAPI)
+#   • swagger    → http://localhost:8001/docs   (Swagger UI)
+#   • postgres   → localhost:5432
+#   • redis      → localhost:6379
+#   • pgadmin    → http://localhost:5050
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: nivo-backend
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env.docker.example
+    environment:
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8001:8000"
+    volumes:
+      - ../backend:/app   # hot-reload en desarrollo
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - nivo-back-net
+    command: >
+      sh -c "
+        alembic upgrade head &&
+        uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --log-level debug --access-log
+      "
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: nivo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: Nivo
+      POSTGRES_PASSWORD: Nivo
+      POSTGRES_DB: Nivo_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - nivo_postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    networks:
+      - nivo-back-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U Nivo -d Nivo_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: nivo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - nivo_redis_data:/data
+    networks:
+      - nivo-back-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: nivo-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@nivo.co
+      PGADMIN_DEFAULT_PASSWORD: nivo_admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - nivo_pgadmin_data:/var/lib/pgadmin
+    networks:
+      - nivo-back-net
+
+networks:
+  nivo-back-net:
+    driver: bridge
+    name: nivo-backend-network
+
+volumes:
+  nivo_postgres_data:
+    driver: local
+  nivo_redis_data:
+    driver: local
+  nivo_pgadmin_data:
+    driver: local

@@ -1,0 +1,46 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Nivo — Solo Frontend
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Levanta únicamente el contenedor del frontend React.
+# Requiere que el backend esté corriendo (local o en otro compose).
+#
+# Uso:
+#   docker compose -f docker_helper/docker-compose.frontend.yml up --build
+#   docker compose -f docker_helper/docker-compose.frontend.yml down
+#
+# Servicios:
+#   • frontend   → http://localhost:3000
+#
+# NOTA: El frontend hace proxy de /api/ hacia http://backend:8000.
+#       Si el backend corre en otro puerto local, ajusta VITE_API_BASE_URL
+#       en el build arg o usa el compose raíz que conecta todo.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:8001
+        - VITE_APP_NAME=Nivo
+        - VITE_ENVIRONMENT=development
+    container_name: nivo-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - nivo-front-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/nginx-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+networks:
+  nivo-front-net:
+    driver: bridge
+    name: nivo-frontend-network
