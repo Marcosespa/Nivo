@@ -1,0 +1,39 @@
+# ── Stage 1: Builder ──────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies first (better layer caching)
+COPY package.json package-lock.json* ./
+RUN npm ci --frozen-lockfile
+
+# Copy source files
+COPY . .
+
+# Build for production
+RUN npm run build
+
+# ── Stage 2: Runtime ──────────────────────────────────────────────────────────
+FROM nginx:alpine AS runtime
+
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy our nginx config
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy built assets from builder
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Add non-root user for security
+RUN addgroup -g 1001 -S nginx-user && \
+    adduser -S -D -H -u 1001 -h /var/cache/nginx -s /sbin/nologin -G nginx-user -g nginx-user nginx-user && \
+    chown -R nginx-user:nginx-user /usr/share/nginx/html && \
+    chown -R nginx-user:nginx-user /var/cache/nginx && \
+    chown -R nginx-user:nginx-user /var/log/nginx && \
+    touch /var/run/nginx.pid && \
+    chown -R nginx-user:nginx-user /var/run/nginx.pid
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
