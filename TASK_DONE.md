@@ -24,3 +24,9 @@
 
 - Solo se marcaron tareas verificadas de sprint 0 y sprint 1.
 - `TASK-006`, `TASK-007` y `TASK-008` no se marcaron porque en el roadmap detallado pertenecen al sprint 2.
+
+## Auditoria de consistencia - 2026-04-16
+
+- `TASKS.md` y `TASK_DONE.md` quedaron sincronizados para sprint 0: `FIX-001` a `FIX-009` estan en estado `DONE`.
+- `TASKS.md` y `TASK_DONE.md` quedaron sincronizados para sprint 1: `TASK-001` a `TASK-005` estan en estado `DONE`.
+- `TASK-006`, `TASK-007` y `TASK-008` siguen fuera de `TASK_DONE.md` porque permanecen pendientes y corresponden al sprint 2 en el roadmap detallado.

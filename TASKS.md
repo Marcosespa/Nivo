@@ -2763,20 +2763,20 @@ TASK-035 (Productos regulados) → Fase 3/Año 2 con partner autorizado
 
 | Task | Descripción corta | Mes | Estado |
 |------|------------------|-----|--------|
-| FIX-001 | Bug init_db() SQLAlchemy 2.0 | 0 | [ ] |
-| FIX-002 | Eliminar shared_secret de KeyExchangeResponse | 0 | [ ] |
-| FIX-003 | Eliminar signing_key_hex de SignRequest | 0 | [ ] |
-| FIX-004 | Conectar algoritmos PQC desde settings | 0 | [ ] |
-| FIX-005 | Inyectar sesión BD en routers | 0 | [ ] |
-| FIX-006 | Agregar campos regulatorios a Transaction | 0 | [ ] |
-| FIX-007 | Corregir URLs CORS (mayúsculas) | 0 | [ ] |
-| FIX-008 | Corregir orden de rutas payments.py | 0 | [ ] |
-| FIX-009 | Eliminar httpx duplicado en requirements | 0 | [ ] |
-| TASK-001 | ORM SQLAlchemy | 1 | [ ] |
-| TASK-002 | JWT Real | 1 | [ ] |
-| TASK-003 | Pagos Atómicos | 1 | [ ] |
-| TASK-004 | Tests Crypto | 1 | [ ] |
-| TASK-005 | Twilio OTP | 1 | [ ] |
+| FIX-001 | Bug init_db() SQLAlchemy 2.0 | 0 | [x] |
+| FIX-002 | Eliminar shared_secret de KeyExchangeResponse | 0 | [x] |
+| FIX-003 | Eliminar signing_key_hex de SignRequest | 0 | [x] |
+| FIX-004 | Conectar algoritmos PQC desde settings | 0 | [x] |
+| FIX-005 | Inyectar sesión BD en routers | 0 | [x] |
+| FIX-006 | Agregar campos regulatorios a Transaction | 0 | [x] |
+| FIX-007 | Corregir URLs CORS (mayúsculas) | 0 | [x] |
+| FIX-008 | Corregir orden de rutas payments.py | 0 | [x] |
+| FIX-009 | Eliminar httpx duplicado en requirements | 0 | [x] |
+| TASK-001 | ORM SQLAlchemy | 1 | [x] |
+| TASK-002 | JWT Real | 1 | [x] |
+| TASK-003 | Pagos Atómicos | 1 | [x] |
+| TASK-004 | Tests Crypto | 1 | [x] |
+| TASK-005 | Twilio OTP | 1 | [x] |
 | TASK-006 | KYC Truora | 1 | [ ] |
 | TASK-007 | PSE Wompi | 1 | [ ] |
 | TASK-008 | Retiros ACH | 1 | [ ] |
