@@ -5,12 +5,11 @@ export const Hero = () => {
   return (
     <HeroWithVideo
       brandName="Nivo"
-      heroSubtitle="Seguridad Post-Cuántica · NIST FIPS 203"
-      heroDescription="La primera billetera digital colombiana con criptografía Post-Cuántica. Protegida hoy contra las amenazas que llegarán en 2045."
+      heroSubtitle="Seguridad post-cuántica · alineada con NIST FIPS 203"
+      heroDescription="Billetera digital colombiana con criptografía post-cuántica integrada desde el diseño: protege hoy lo que seguirá siendo sensible cuando madure el riesgo cuántico."
       emailPlaceholder="tu@email.com"
       backgroundImage={mediaContent.image.src}
       videoUrl={mediaContent.video.src}
     />
   );
-  
 };

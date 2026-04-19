@@ -107,7 +107,7 @@ const securityPage: SectionPageProps = {
   badge: 'Seguridad',
   title: 'Seguridad post-cuántica explicada en lenguaje normal',
   description:
-    'Validación de identidad, antifraude, recibos verificables y criptografía post-cuántica aplicada donde protege datos de larga vida.',
+    'La computación cuántica aún no cambia tu día a día, pero sí el horizonte de riesgo de lo que cifras hoy. Nivo combina validación de identidad, antifraude, recibos verificables y criptografía post-cuántica donde protege datos que seguirían siendo sensibles dentro de años.',
   proof: 'ML-KEM para llaves, ML-DSA para firmas y modo híbrido durante la transición',
   stats: [
     { value: 'ML-KEM', label: 'llaves' },

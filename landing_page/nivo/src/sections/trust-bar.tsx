@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 
 const trustPoints = [
-  { label: 'Ruta regulatoria Colombia', sub: 'Infraestructura y aliados compatibles con operación local' },
+  { label: 'Ruta regulatoria en Colombia', sub: 'Infraestructura y aliados alineados con operación local' },
   { label: 'NIST FIPS 203 / 204', sub: 'Estándares aprobados en agosto de 2024' },
   { label: 'Wompi · ACH · PSE', sub: 'Infraestructura de pagos en Colombia' },
   { label: 'ISO 27001 · SOC 2', sub: 'Controles auditables y trazabilidad operativa' },

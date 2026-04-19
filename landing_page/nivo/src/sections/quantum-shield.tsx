@@ -11,7 +11,7 @@ const shieldSteps = [
     ),
     title: 'Identidad bajo doble candado',
     description:
-      'Tus datos viajan protegidos por una llave que ni el computador más potente del mundo podrá romper en 20 años.',
+      'Tus datos viajan protegidos con llaves pensadas para resistir incluso cuando la computación cuántica deje obsoletos métodos que hoy siguen en uso.',
     analogy: 'Como un buzón blindado al que solo tú tienes la combinación.',
   },
   {
@@ -23,7 +23,7 @@ const shieldSteps = [
     ),
     title: 'Bóveda con llave futura',
     description:
-      'Usamos el mismo estándar de seguridad que gobiernos y banca suiza apenas empiezan a adoptar — aprobado por el NIST en 2024.',
+      'Alineados con estándares NIST (FIPS 203/204) que gobiernos y banca global están adoptando para la transición post-cuántica.',
     analogy: 'La cerradura que protege secretos de agencias de inteligencia.',
   },
   {
@@ -48,16 +48,17 @@ export const QuantumShield = () => {
     >
       <div className="mx-auto w-full max-w-6xl px-6 lg:px-10">
         <div className="flex flex-col gap-6 md:max-w-3xl">
-          <Badge variant="outline">Seguridad del futuro, hoy</Badge>
+          <Badge variant="outline">Así lo hacemos contigo</Badge>
           <h2 className="font-display text-[40px] font-medium leading-[1.05] tracking-tightest text-nivo-ink md:text-[64px]">
             Tu dinero,
             <br />
             blindado para 2045.
           </h2>
           <p className="max-w-2xl text-lg leading-8 text-nivo-stone md:text-xl md:leading-9">
-            Hoy tu plata está segura. Nivo se asegura de que siga estándolo cuando los
-            computadores cuánticos puedan romper la seguridad que usa el resto de la
-            banca. Sin jerga técnica. Sin promesas vacías.
+            El &quot;por qué&quot; ya está claro. Esto es el &quot;cómo&quot;: tres
+            capas para que identidad, datos y recibos sigan siendo tuyos cuando los
+            métodos que hoy da por cerrada buena parte de la industria empiecen a quedarse
+            cortos. Sin jerga de más. Sin promesas vacías.
           </p>
         </div>
 

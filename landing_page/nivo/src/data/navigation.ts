@@ -18,6 +18,7 @@ export interface NavResourceLink {
 }
 
 export const navResourceLinks: NavResourceLink[] = [
+  { label: 'Por qué cuántica', hash: 'why-quantum' },
   { label: 'Cómo funciona', hash: 'quantum-shield' },
   { label: 'Confianza', hash: 'trust' },
   { label: 'Arquitectura', hash: 'architecture' },

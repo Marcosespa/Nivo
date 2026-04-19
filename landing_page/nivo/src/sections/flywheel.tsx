@@ -41,8 +41,9 @@ export const Flywheel = () => {
             La ruta simple: pagar, cambiar, invertir y escalar.
           </h2>
           <p className="max-w-2xl text-lg leading-8 text-nivo-stone">
-            Nivo arranca con el dolor más frecuente: mover plata. Desde ahí abre monedas,
-            inversión, seguridad post-cuántica y servicios para empresas sin romper la experiencia.
+            Nivo arranca por donde más duele: mover plata. Desde ahí suma monedas,
+            inversión, seguridad post-cuántica y servicios para empresas, sin fragmentar la
+            experiencia.
           </p>
         </div>
 

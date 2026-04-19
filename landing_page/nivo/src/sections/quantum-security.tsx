@@ -46,19 +46,22 @@ export const QuantumSecurity = () => {
       <div className="mx-auto w-full max-w-6xl px-6 lg:px-10">
         <div className="grid gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div>
-            <Badge variant="outline">Arquitectura técnica · para devs y auditores</Badge>
+            <Badge variant="outline">Detalle técnico · devs, partners y auditoría</Badge>
             <h2 className="mt-6 max-w-3xl font-display text-[40px] font-medium leading-[1.05] tracking-tightest text-nivo-ink md:text-[56px]">
               Protección pensada para datos que no pueden caducar.
             </h2>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-nivo-stone">
-              La amenaza cuántica no significa que el dinero deje de moverse mañana. El
-              riesgo real es que datos cifrados hoy sean útiles para un atacante cuando
-              existan computadoras cuánticas criptográficamente relevantes.
+              Si ya viste &quot;por qué cuántica&quot;, aquí va la misma idea con más
+              matices: el riesgo no es que mañana desaparezcan tus pesos de la cuenta, sino
+              que alguien archive tráfico o secretos cifrados hoy y los abra cuando
+              existan máquinas cuánticas lo bastante grandes como para romper esos candados
+              con años de diferencia.
             </p>
             <p className="mt-5 max-w-2xl text-[15px] leading-8 text-nivo-stone-soft">
-              Nivo usa una estrategia gradual: aplicar PQC donde aporta más valor,
-              mantener compatibilidad con sistemas actuales y versionar algoritmos para
-              poder migrar sin rehacer toda la plataforma.
+              Nivo usa una estrategia gradual: aplicar criptografía post-cuántica (PQC)
+              donde más duele si falla, convivir en modo híbrido con lo que ya usa la
+              industria y poder rotar algoritmos cuando los estándares evolucionen, sin
+              rehacer toda la plataforma.
             </p>
           </div>
 

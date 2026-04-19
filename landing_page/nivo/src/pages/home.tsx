@@ -1,5 +1,6 @@
 import { Hero } from '@/sections/hero';
 import { TrustBar } from '@/sections/trust-bar';
+import { WhyQuantum } from '@/sections/why-quantum';
 import { QuantumShield } from '@/sections/quantum-shield';
 import { SafetyPromise } from '@/sections/safety-promise';
 import { FeaturePillarsTabs } from '@/components/blocks/feature-pillars-tabs';
@@ -14,6 +15,8 @@ export const HomePage = () => {
       <Hero />
 
       <TrustBar />
+
+      <WhyQuantum />
 
       <QuantumShield />
 
