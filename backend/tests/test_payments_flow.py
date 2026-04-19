@@ -99,4 +99,4 @@ async def test_payment_rejects_when_balance_is_insufficient(client, created_user
             "message": "Sin saldo",
         },
     )
-    assert response.status_code == 422
+    assert response.status_code == 402

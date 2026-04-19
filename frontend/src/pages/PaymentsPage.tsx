@@ -1,81 +1,215 @@
-import { useState, useEffect } from 'react'
-import { RefreshCw, Send } from 'lucide-react'
+import { useState } from 'react'
 import Layout from '../components/layout/Layout'
-import Card from '../components/common/Card'
-import SendPayment from '../components/payments/SendPayment'
-import TransactionList from '../components/wallet/TransactionList'
+import Button from '../components/common/Button'
+import Input from '../components/common/Input'
+import EndpointCard from '../components/console/EndpointCard'
+import JsonPanel from '../components/console/JsonPanel'
+import SessionSummaryCard from '../components/console/SessionSummaryCard'
+import { useApiAction } from '../hooks/useApiAction'
 import { paymentsService } from '../services/payments.service'
-import type { Transaction } from '../types'
+import { useAuthStore } from '../store/authStore'
 
 export default function PaymentsPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { execute } = useApiAction()
+  const { lastOtp, lastTxId } = useAuthStore()
+  const [loading, setLoading] = useState<string | null>(null)
+  const [receiverPhone, setReceiverPhone] = useState('+573009876543')
+  const [amountCop, setAmountCop] = useState('150000')
+  const [message, setMessage] = useState('Pago de prueba desde el frontend React')
+  const [confirmTxId, setConfirmTxId] = useState(lastTxId)
+  const [confirmOtp, setConfirmOtp] = useState(lastOtp)
+  const [detailTxId, setDetailTxId] = useState(lastTxId)
+  const [page, setPage] = useState('1')
+  const [pageSize, setPageSize] = useState('20')
+  const [direction, setDirection] = useState('all')
 
-  const fetchHistory = async () => {
-    setLoading(true)
-    setError(null)
+  const run = async (key: string, job: () => Promise<unknown>) => {
+    setLoading(key)
     try {
-      const data = await paymentsService.getHistory()
-      setTransactions(data)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error al cargar historial')
+      await job()
+      setConfirmTxId(useAuthStore.getState().lastTxId)
+      setDetailTxId(useAuthStore.getState().lastTxId)
+      setConfirmOtp(useAuthStore.getState().lastOtp)
     } finally {
-      setLoading(false)
+      setLoading(null)
     }
   }
 
-  useEffect(() => {
-    fetchHistory()
-  }, [])
-
   return (
     <Layout>
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Send payment form */}
-        <div className="lg:col-span-2">
-          <Card>
-            <div className="flex items-center gap-2.5 mb-6">
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/15 flex items-center justify-center">
-                <Send className="w-4 h-4 text-indigo-400" />
-              </div>
-              <div>
-                <h2 className="text-base font-semibold text-white">Enviar dinero</h2>
-                <p className="text-xs text-gray-500">Transferencia instantánea</p>
-              </div>
-            </div>
-            <SendPayment onSuccess={fetchHistory} />
-          </Card>
-        </div>
-
-        {/* Payment history */}
-        <div className="lg:col-span-3">
-          <Card className="!p-0 overflow-hidden h-full">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-              <h2 className="text-sm font-semibold text-white">Historial de pagos</h2>
-              <button
-                onClick={fetchHistory}
-                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Actualizar
-              </button>
-            </div>
-
-            {error && (
-              <div className="mx-4 mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                <p className="text-sm text-red-400">{error}</p>
-              </div>
-            )}
-
-            <div className="px-2 py-2">
-              <TransactionList
-                transactions={transactions}
-                loading={loading}
-                emptyMessage="Sin pagos aún"
+      <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+        <div className="space-y-6">
+          <EndpointCard
+            title="Iniciar pago"
+            endpoint="POST /api/v1/payments/initiate"
+            description="Crea una transaccion pendiente y prepara el OTP de confirmacion."
+          >
+            <div className="grid gap-4 md:grid-cols-3">
+              <Input
+                label="Receiver phone"
+                value={receiverPhone}
+                onChange={(event) => setReceiverPhone(event.target.value)}
+              />
+              <Input
+                label="Amount COP"
+                type="number"
+                value={amountCop}
+                onChange={(event) => setAmountCop(event.target.value)}
+              />
+              <Input
+                label="Message"
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
               />
             </div>
-          </Card>
+            <Button
+              loading={loading === 'initiate'}
+              onClick={() =>
+                run('initiate', () =>
+                  execute({
+                    label: 'Pago iniciado',
+                    method: 'POST',
+                    path: '/api/v1/payments/initiate',
+                    request: () =>
+                      paymentsService.initiate({
+                        receiver_phone: receiverPhone,
+                        amount_cop: Number(amountCop),
+                        message,
+                      }),
+                  })
+                )
+              }
+            >
+              Iniciar pago
+            </Button>
+          </EndpointCard>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <EndpointCard
+              title="Confirmar pago"
+              endpoint="POST /api/v1/payments/confirm"
+              description="Usa el ultimo tx_id y OTP guardados o pegados manualmente."
+            >
+              <Input
+                label="tx_id"
+                value={confirmTxId}
+                onChange={(event) => setConfirmTxId(event.target.value)}
+              />
+              <Input
+                label="OTP"
+                value={confirmOtp}
+                onChange={(event) => setConfirmOtp(event.target.value)}
+              />
+              <Button
+                loading={loading === 'confirm'}
+                onClick={() =>
+                  run('confirm', () =>
+                    execute({
+                      label: 'Pago confirmado',
+                      method: 'POST',
+                      path: '/api/v1/payments/confirm',
+                      request: () =>
+                        paymentsService.confirm({
+                          tx_id: confirmTxId || useAuthStore.getState().lastTxId,
+                          otp_code: confirmOtp || useAuthStore.getState().lastOtp,
+                        }),
+                    })
+                  )
+                }
+              >
+                Confirmar
+              </Button>
+            </EndpointCard>
+
+            <EndpointCard
+              title="Detalle de transaccion"
+              endpoint="GET /api/v1/payments/{tx_id}"
+              description="Trae el detalle de una transaccion individual."
+            >
+              <Input
+                label="tx_id"
+                value={detailTxId}
+                onChange={(event) => setDetailTxId(event.target.value)}
+              />
+              <Button
+                variant="secondary"
+                loading={loading === 'detail'}
+                onClick={() =>
+                  run('detail', () =>
+                    execute({
+                      label: 'Detalle de transaccion',
+                      method: 'GET',
+                      path: `/api/v1/payments/${detailTxId || useAuthStore.getState().lastTxId}`,
+                      request: () =>
+                        paymentsService.detail(detailTxId || useAuthStore.getState().lastTxId),
+                    })
+                  )
+                }
+              >
+                Consultar
+              </Button>
+            </EndpointCard>
+          </div>
+
+          <EndpointCard
+            title="Historial"
+            endpoint="GET /api/v1/payments/history"
+            description="Consulta el historial por pagina, tamano y direccion del movimiento."
+          >
+            <div className="grid gap-4 md:grid-cols-3">
+              <Input
+                label="Page"
+                type="number"
+                value={page}
+                onChange={(event) => setPage(event.target.value)}
+              />
+              <Input
+                label="Page size"
+                type="number"
+                value={pageSize}
+                onChange={(event) => setPageSize(event.target.value)}
+              />
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-gray-300">
+                Direction
+                <select
+                  className="h-[46px] rounded-xl border border-gray-700 bg-gray-900 px-4 text-sm text-white"
+                  value={direction}
+                  onChange={(event) => setDirection(event.target.value)}
+                >
+                  <option value="all">all</option>
+                  <option value="sent">sent</option>
+                  <option value="received">received</option>
+                </select>
+              </label>
+            </div>
+            <Button
+              variant="secondary"
+              loading={loading === 'history'}
+              onClick={() =>
+                run('history', () =>
+                  execute({
+                    label: 'Historial de pagos',
+                    method: 'GET',
+                    path: '/api/v1/payments/history',
+                    request: () =>
+                      paymentsService.history({
+                        page: Number(page),
+                        page_size: Number(pageSize),
+                        direction,
+                      }),
+                  })
+                )
+              }
+            >
+              Traer historial
+            </Button>
+          </EndpointCard>
+
+          <JsonPanel />
+        </div>
+
+        <div className="space-y-6">
+          <SessionSummaryCard />
         </div>
       </div>
     </Layout>

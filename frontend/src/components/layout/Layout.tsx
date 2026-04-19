@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import Sidebar from './Sidebar'
 import Header from './Header'
 
 interface LayoutProps {
-  children: React.ReactNode
+  children: ReactNode
 }
 
 export default function Layout({ children }: LayoutProps) {

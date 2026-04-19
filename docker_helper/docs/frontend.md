@@ -27,15 +27,12 @@ Stage 2 (runtime): nginx:alpine
 
 ## Nginx: qué hace cada bloque
 
-### Proxy de API
-```nginx
-location /api/ {
-    proxy_pass http://backend:8000;
-}
-```
-El frontend **nunca habla directamente al puerto 8001**. Toda llamada a `/api/...`
-pasa por Nginx, que la reenvía al servicio `backend` en la red Docker interna.
-Esto evita problemas de CORS en producción.
+### Conectividad de API
+
+El bundle React usa `VITE_API_BASE_URL` como destino por defecto.
+La app tambien permite cambiar esa base URL desde la UI y guarda el valor
+en `localStorage`, asi que el mismo contenedor sirve para backend local,
+Docker o cualquier ambiente de QA.
 
 ### SPA fallback
 ```nginx
@@ -69,12 +66,12 @@ cada deploy invalida el caché automáticamente.
 
 ```env
 VITE_API_BASE_URL=http://localhost:8001   # URL del backend (en producción, el dominio real)
-VITE_APP_NAME=Nivo
+VITE_APP_NAME=Nivo API Console
 VITE_ENVIRONMENT=development
 ```
 
-Estas variables se **inyectan en tiempo de build** (no en runtime).
-Para cambiarlas hay que rebuildar la imagen.
+Estas variables se inyectan en tiempo de build. Luego la app puede sobreescribir
+la base URL desde la pantalla de login sin rebuild.
 
 ---
 
@@ -109,6 +106,6 @@ Docker usa esto para saber cuándo el frontend está listo.
 
 ## Puertos
 
-| Puerto host | Puerto contenedor | Descripción              |
-|-------------|-------------------|--------------------------|
-| 3000        | 80                | App React (producción)   |
+| Puerto host | Puerto contenedor | Descripcion |
+|---|---|---|
+| 3000 | 80 | App React |

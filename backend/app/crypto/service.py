@@ -24,6 +24,9 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from opentelemetry import trace
+
+_tracer = trace.get_tracer(__name__)
 
 # Import condicional de liboqs
 # En producción, liboqs debe estar instalado.
@@ -231,22 +234,47 @@ class CryptoService:
         """
         Firma una transacción con ML-DSA-65.
         El payload debe incluir: tx_id, monto, timestamp, sender_hash, receiver_hash.
-        """
-        if self._liboqs_available:
-            with oqs.Signature(self.SIG_ALGORITHM, signing_secret_key) as signer:
-                signature = signer.sign(payload)
-        else:
-            # Simulación: HMAC usando SHA256(sk) como clave.
-            # El verificador solo tiene pk = SHA256(sk), así que usamos pk directamente.
-            hmac_key = hashlib.sha256(signing_secret_key).digest()
-            signature = hmac.new(hmac_key, payload, hashlib.sha256).digest()
 
-        return SignedTransaction(
+        NOTA: `signing_secret_key` es la llave privada ML-DSA-65. En desarrollo
+        viene del keypair efímero generado por `generate_signing_keypair()`.
+        En producción este parámetro será reemplazado por un handle opaco a
+        GCP/AWS KMS o HashiCorp Vault sin cambiar la firma del método
+        (ver ADR-003 pendiente).
+        """
+        return self.sign(
             tx_id=tx_id,
             payload=payload,
-            signature=signature,
+            signing_secret_key=signing_secret_key,
             public_key_fingerprint=public_key_fingerprint,
         )
+
+    # Alias expuesto para tracing de alto nivel (solicitado en plan P1).
+    def sign(
+        self,
+        tx_id: str,
+        payload: bytes,
+        signing_secret_key: bytes,
+        public_key_fingerprint: str,
+    ) -> SignedTransaction:
+        """Punto único de firma para migrar a HSM/KMS sin romper llamadores."""
+        with _tracer.start_as_current_span("crypto.sign") as span:
+            span.set_attribute("nivo.tx_id", tx_id)
+            span.set_attribute("nivo.algorithm", self.SIG_ALGORITHM)
+            span.set_attribute("nivo.payload_size_bytes", len(payload))
+
+            if self._liboqs_available:
+                with oqs.Signature(self.SIG_ALGORITHM, signing_secret_key) as signer:
+                    signature = signer.sign(payload)
+            else:
+                hmac_key = hashlib.sha256(signing_secret_key).digest()
+                signature = hmac.new(hmac_key, payload, hashlib.sha256).digest()
+
+            return SignedTransaction(
+                tx_id=tx_id,
+                payload=payload,
+                signature=signature,
+                public_key_fingerprint=public_key_fingerprint,
+            )
 
     def verify_transaction_signature(
         self,

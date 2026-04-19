@@ -8,14 +8,12 @@ Endpoints:
 """
 
 from __future__ import annotations
-import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
@@ -57,6 +55,7 @@ class TopupInitiateRequest(BaseModel):
 class TopupInitiateResponse(BaseModel):
     """Respuesta de iniciación de top-up."""
     payment_link_url: str
+    reference: str
     expires_in_minutes: int = 30  # PSE link válido por 30 minutos
     amount_cop: int
     amount_display: str
@@ -112,6 +111,7 @@ async def initiate_topup(
 
         return TopupInitiateResponse(
             payment_link_url=result["payment_link_url"],
+            reference=result["reference"],
             amount_cop=request.amount_cop,
             amount_display=f"${request.amount_cop / 100:,.0f} COP",
         )
@@ -163,6 +163,9 @@ async def wompi_webhook(
         payload = await request.json()
     except Exception:
         return {"status": "ok"}
+
+    if not signature:
+        signature = payload.get("signature", {}).get("checksum", "")
 
     # Procesar webhook
     try:

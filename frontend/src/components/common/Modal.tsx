@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -6,7 +7,7 @@ interface ModalProps {
   isOpen: boolean
   onClose: () => void
   title: string
-  children: React.ReactNode
+  children: ReactNode
   size?: 'sm' | 'md' | 'lg'
 }
 

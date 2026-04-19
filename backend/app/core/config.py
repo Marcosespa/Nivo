@@ -3,6 +3,8 @@ Configuración central de Nivo.
 Todas las variables de entorno se validan aquí con Pydantic v2.
 """
 
+from __future__ import annotations
+
 from typing import Literal
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -42,6 +44,7 @@ class Settings(BaseSettings):
     PQC_SIGNATURE_ALGORITHM: str = "ML-DSA-65"  # NIST FIPS 204
     HYBRID_MODE: bool = True                    # PQC + X25519 simultáneo
     PQC_SECURITY_LEVEL: int = 3                 # NIST Level 3
+    B2B_API_KEYS: list[str] = []
 
     # ─── CORS ─────────────────────────────────────────────────────────────────
     ALLOWED_ORIGINS: list[str] = [
@@ -57,6 +60,10 @@ class Settings(BaseSettings):
     PAYMENT_GATEWAY_API_KEY: str = ""
     PAYMENT_GATEWAY_SECRET: str = ""
     WOMPI_EVENTS_SECRET: str = ""
+    # En dev permite apuntar a un mock local / sandbox alternativo sin reescribir código.
+    WOMPI_BASE_URL: str = ""
+    # MOCK_MODE evita llamadas salientes reales a Wompi en desarrollo y CI.
+    WOMPI_MOCK_MODE: bool = False
     MONEY_CUSTODY_MODE: Literal[
         "non_custodial_middleware",
         "bank_partner",

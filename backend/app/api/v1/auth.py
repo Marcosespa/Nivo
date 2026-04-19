@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 import redis.asyncio as redis
@@ -34,6 +34,7 @@ from app.core.security import (
 from app.services.otp_service import OTPService
 from app.services.auth_service import AuthService
 from app.services.sms_service import SMSService
+from app.utils.dev_security import should_expose_dev_secrets
 from app.utils.validators import validate_colombian_phone
 
 router = APIRouter()
@@ -99,6 +100,7 @@ async def get_redis() -> redis.Redis:
 )
 async def request_otp(
     request: OTPRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     redis_client: Annotated[redis.Redis, Depends(get_redis)],
 ):
@@ -154,7 +156,7 @@ async def request_otp(
     }
 
     # Dev-only helper para pruebas locales cuando no hay SMS real.
-    if settings.ENVIRONMENT == "development":
+    if should_expose_dev_secrets(http_request):
         response["dev_otp"] = otp_code
 
     return response

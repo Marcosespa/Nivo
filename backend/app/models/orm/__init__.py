@@ -10,6 +10,7 @@ from .otp import OTP as OTPORM
 from .partner_order import PartnerOrder as PartnerOrderORM
 from .product_disclosure import ProductDisclosure as ProductDisclosureORM
 from .bank_account import BankAccount as BankAccountORM
+from .b2b_client import B2BClient as B2BClientORM
 
 __all__ = [
     "UserORM",
@@ -22,4 +23,5 @@ __all__ = [
     "PartnerOrderORM",
     "ProductDisclosureORM",
     "BankAccountORM",
+    "B2BClientORM",
 ]

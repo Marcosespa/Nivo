@@ -119,7 +119,7 @@ created_at: TIMESTAMPTZ DEFAULT NOW()
 # otps
 id: UUID PK
 phone_number: VARCHAR(15) NOT NULL
-otp_hash: VARCHAR(64) NOT NULL  # bcrypt del OTP, nunca el OTP en plano
+otp_hash: VARCHAR(64) NOT NULL  # hash del OTP; en el flujo activo se usa HMAC-SHA256 en Redis, nunca en plano
 purpose: ENUM('login','payment','kyc')
 used: BOOLEAN DEFAULT FALSE
 expires_at: TIMESTAMPTZ NOT NULL

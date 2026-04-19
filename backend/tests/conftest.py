@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
 import uuid
 from pathlib import Path
@@ -14,7 +13,9 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.models.base import Base
+from app.api.v1.crypto import verify_api_key
 from app.models.orm.pqc_key import PQCKey as PQCKeyORM
 from app.models.orm.user import KYCStatusEnum, User as UserORM, UserPlanEnum
 from app.models.orm.wallet import Wallet as WalletORM
@@ -107,7 +108,12 @@ async def client(db_session: AsyncSession, fake_redis: FakeRedis) -> AsyncIterat
     from app.api.v1.payments import get_redis as payments_get_redis
 
     async def override_db() -> AsyncIterator[AsyncSession]:
-        yield db_session
+        try:
+            yield db_session
+            await db_session.commit()
+        except Exception:
+            await db_session.rollback()
+            raise
 
     async def override_redis() -> FakeRedis:
         return fake_redis
@@ -115,12 +121,20 @@ async def client(db_session: AsyncSession, fake_redis: FakeRedis) -> AsyncIterat
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[auth_get_redis] = override_redis
     app.dependency_overrides[payments_get_redis] = override_redis
+    app.dependency_overrides[verify_api_key] = lambda: "test-b2b-client"
+    original_api_keys = settings.B2B_API_KEYS
+    settings.B2B_API_KEYS = ["test-b2b-api-key-minimum-32-chars"]
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as http_client:
+    transport = ASGITransport(app=app, client=("127.0.0.1", 12345))
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://localhost",
+        headers={"X-Nivo-Key": "test-b2b-api-key-minimum-32-chars"},
+    ) as http_client:
         yield http_client
 
     app.dependency_overrides.clear()
+    settings.B2B_API_KEYS = original_api_keys
 
 
 @pytest_asyncio.fixture

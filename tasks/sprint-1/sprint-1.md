@@ -123,7 +123,7 @@ created_at: TIMESTAMPTZ DEFAULT NOW()
 # otps
 id: UUID PK
 phone_number: VARCHAR(15) NOT NULL
-otp_hash: VARCHAR(64) NOT NULL  # bcrypt del OTP, nunca el OTP en plano
+otp_hash: VARCHAR(64) NOT NULL  # hash del OTP; en el flujo activo se usa HMAC-SHA256 en Redis, nunca en plano
 purpose: ENUM('login','payment','kyc')
 used: BOOLEAN DEFAULT FALSE
 expires_at: TIMESTAMPTZ NOT NULL
@@ -176,7 +176,7 @@ access + refresh tokens, blacklist en Redis, y la dependencia `get_current_user`
 # OTP
 - 6 dígitos numéricos
 - Generado con secrets.randbelow(1000000)
-- Almacenado como bcrypt hash en Redis con key: f"otp:{phone_number}:{purpose}"
+- Almacenado como HMAC-SHA256 del OTP en Redis con key: f"otp:{phone_number}:{purpose}"
 - TTL: 300 segundos (5 minutos)
 - Máximo 3 intentos fallidos antes de invalidar (contador en Redis)
 - Rate limit: máximo 3 OTPs por teléfono por hora
@@ -387,10 +387,9 @@ Si `settings.TWILIO_ACCOUNT_SID` está vacío, loggear el OTP en consola con for
 **Criterios de éxito:**
 - [ ] Con credenciales de Twilio sandbox: SMS llega al número de prueba
 - [ ] Sin credenciales: OTP se imprime en consola y el flujo funciona
-- [ ] El OTP NUNCA se almacena en plano — solo el bcrypt hash en Redis
+- [ ] El OTP NUNCA se almacena en plano — solo hash HMAC-SHA256 en Redis
 - [ ] Máximo 3 OTPs por teléfono por hora (Redis counter)
 
 **Dependencias:** TASK-002
 
 ---
-

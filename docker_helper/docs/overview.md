@@ -1,22 +1,13 @@
-# Docker Helper — Guía General Nivo
+# Docker Helper — Guia General Nivo
 
-## Comando principal (levanta TODO)
+## Comando principal
 
 ```bash
-# Desde la raíz del proyecto:
+# Stack completo desde docker_helper
+docker compose -f docker_helper/docker-compose.full.yml up --build
+
+# Stack completo desde la raíz
 docker compose up --build
-
-# En background:
-docker compose up --build -d
-
-# Ver logs en tiempo real:
-docker compose logs -f
-
-# Bajar todo:
-docker compose down
-
-# Reset completo (borra volúmenes y datos):
-docker compose down -v
 ```
 
 ---
@@ -32,6 +23,7 @@ docker compose down -v
 | PostgreSQL  | localhost:5432                   | Base de datos relacional           |
 | Redis       | localhost:6379                   | Cache y sesiones                   |
 | pgAdmin     | http://localhost:5050            | Panel web de PostgreSQL            |
+| Mailhog     | http://localhost:8025            | UI de correo en desarrollo (si levantas microservices) |
 
 ---
 
@@ -63,37 +55,32 @@ docker_helper/
 Y en la raíz del proyecto:
 
 ```
-docker-compose.yml   ← Orquesta TODOS los servicios en uno
+docker-compose.yml   ← Alias del stack completo
 ```
 
 ---
 
 ## Cuándo usar cada compose
 
-| Situación                                      | Comando                                                               |
-|------------------------------------------------|-----------------------------------------------------------------------|
-| Desarrollo completo (todo junto)               | `docker compose up --build` (desde raíz)                             |
-| Solo quiero las DBs, el backend corre local    | `docker compose -f docker_helper/docker-compose.databases.yml up -d` |
-| Probar la API con Postman (sin frontend)        | `docker compose -f docker_helper/docker-compose.backend.yml up --build` |
-| Solo buildear y probar el frontend             | `docker compose -f docker_helper/docker-compose.frontend.yml up --build` |
-| Levantar workers auxiliares                    | `docker compose -f docker_helper/docker-compose.microservices.yml up -d` |
+| Situación | Comando |
+|---|---|
+| Desarrollo completo | `docker compose up --build` |
+| Stack completo desde helper | `docker compose -f docker_helper/docker-compose.full.yml up --build` |
+| Solo DBs | `docker compose -f docker_helper/docker-compose.databases.yml up -d` |
+| Postman + API | `docker compose -f docker_helper/docker-compose.backend.yml up --build` |
+| Solo frontend | `docker compose -f docker_helper/docker-compose.frontend.yml up --build` |
+| Microservicios | `docker compose -f docker_helper/docker-compose.microservices.yml up -d` |
 
 ---
 
 ## Flujo de arranque del stack principal
 
 ```
-postgres ──► (healthy)
-redis    ──► (healthy)
-              │
-              ▼
-           backend ──► alembic migrate ──► uvicorn start ──► (healthy)
-              │
-              ▼
-           frontend ──► nginx start ──► (healthy)
+postgres -> healthy
+redis -> healthy
+backend -> alembic -> uvicorn -> healthy
+frontend -> nginx -> healthy
 ```
-
-Los `depends_on` con `condition: service_healthy` garantizan ese orden.
 
 ---
 
