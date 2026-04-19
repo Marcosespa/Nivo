@@ -1,0 +1,99 @@
+@import url('https://rsms.me/inter/inter.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Global typography baseline
+  - Body/UI: Inter
+  - Display/headlines: Neue Haas Grotesk Display with Inter Display fallback
+  - Mono/meta labels: configured in tailwind.config.js as JetBrains Mono stack
+*/
+:root {
+  color-scheme: light;
+  font-family: 'Inter', 'Inter Display', ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-feature-settings: 'ss01', 'ss03', 'cv11';
+  background: #FFFFFF;
+  color: #000000;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+  Variable font fallback for Inter.
+  If Inter var is available, body copy uses it for better optical consistency.
+*/
+@supports (font-variation-settings: normal) {
+  :root {
+    font-family: 'Inter var', 'Inter', ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, sans-serif;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #FFFFFF;
+  color: #000000;
+  letter-spacing: -0.011em;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  min-height: 100vh;
+  background: #FFFFFF;
+}
+
+/*
+  Selection color uses the only accent in the system:
+  forest (#1A3C34)
+*/
+::selection {
+  background-color: #1A3C34;
+  color: #FFFFFF;
+}
+
+/*
+  Headline family:
+  Neue Haas Grotesk Display -> Neue Haas Grotesk -> Inter Display -> Inter
+  Tight tracking is intentional to preserve the editorial / Swiss-bank tone.
+*/
+h1,
+h2,
+h3,
+h4 {
+  font-family:
+    'Neue Haas Grotesk Display Pro',
+    'Neue Haas Grotesk',
+    'Inter Display',
+    'Inter',
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  letter-spacing: -0.025em;
+  color: #000000;
+}
+
+/*
+  Utility hook for any component that needs display typography explicitly.
+*/
+.font-display {
+  font-family:
+    'Neue Haas Grotesk Display Pro',
+    'Neue Haas Grotesk',
+    'Inter Display',
+    'Inter',
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+}
