@@ -49,6 +49,13 @@ interface WordObject {
   needsSpace: boolean;
 }
 
+type SegmenterConstructor = new (
+  locales?: string | string[],
+  options?: { granularity?: 'grapheme' | 'word' | 'sentence' }
+) => {
+  segment: (input: string) => Iterable<{ segment: string }>;
+};
+
 const TextRotate = forwardRef<TextRotateRef, TextRotateProps>(
   (
     {
@@ -76,8 +83,14 @@ const TextRotate = forwardRef<TextRotateRef, TextRotateProps>(
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
 
     const splitIntoCharacters = (text: string): string[] => {
-      if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
-        const segmenter = new Intl.Segmenter('es', { granularity: 'grapheme' });
+      const IntlWithSegmenter = Intl as typeof Intl & {
+        Segmenter?: SegmenterConstructor;
+      };
+
+      if (typeof Intl !== 'undefined' && IntlWithSegmenter.Segmenter) {
+        const segmenter = new IntlWithSegmenter.Segmenter('es', {
+          granularity: 'grapheme',
+        });
         return Array.from(segmenter.segment(text), ({ segment }) => segment);
       }
       return Array.from(text);

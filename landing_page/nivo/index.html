@@ -9,6 +9,26 @@
       content="La primera billetera digital colombiana con criptografía Post-Cuántica. Protegida hoy contra las amenazas que llegarán en 2045."
     />
     <meta name="theme-color" content="#FFFFFF" />
+    <script>
+      (() => {
+        const storageKey = 'nivo-theme-preference';
+        const stored = window.localStorage.getItem(storageKey);
+        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light';
+        const resolved =
+          stored === 'light' || stored === 'dark'
+            ? stored
+            : systemTheme;
+
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.style.colorScheme = resolved;
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+          meta.setAttribute('content', resolved === 'dark' ? '#0B0E0D' : '#FFFFFF');
+        }
+      })();
+    </script>
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 

@@ -1,5 +1,8 @@
+const nivoColor = (token) => `rgb(var(--nivo-${token}) / <alpha-value>)`;
+
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: ['selector', ':root[data-theme="dark"]'],
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
@@ -7,32 +10,29 @@ export default {
         // Nivo design system:
         // 90% neutral (ink/paper/stone/cloud), 5-10% forest accent.
         nivo: {
-          ink: '#000000',
-          paper: '#FFFFFF',
-          stone: '#4A4A4A',
-          'stone-soft': '#6B6B6B',
-          mist: '#9A9A9A',
-          cloud: '#E5E5E5',
-          'cloud-soft': '#F3F3F3',
-          forest: '#1A3C34',
-          'forest-soft': '#254F46',
-          line: '#D4D4D4',
+          ink: nivoColor('ink'),
+          paper: nivoColor('paper'),
+          stone: nivoColor('stone'),
+          'stone-soft': nivoColor('stone-soft'),
+          mist: nivoColor('mist'),
+          cloud: nivoColor('cloud'),
+          'cloud-soft': nivoColor('cloud-soft'),
+          forest: nivoColor('forest'),
+          'forest-soft': nivoColor('forest-soft'),
+          line: nivoColor('line'),
         },
       },
       boxShadow: {
-        // card: primary content container
-        // subtle: low-elevation separators / quiet panels
-        // forest: reserved for accent CTA emphasis
-        card: '0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 32px rgba(0, 0, 0, 0.06)',
-        subtle: '0 1px 0 rgba(0, 0, 0, 0.04)',
-        forest: '0 8px 24px rgba(26, 60, 52, 0.18)',
+        card:
+          '0 1px 2px rgb(var(--nivo-shadow) / 0.06), 0 8px 32px rgb(var(--nivo-shadow) / 0.12)',
+        subtle: '0 1px 0 rgb(var(--nivo-shadow) / 0.06)',
+        forest: '0 8px 24px rgb(var(--nivo-forest) / 0.22)',
       },
       backgroundImage: {
-        // Editorial grids used as mathematical / cryptographic texture.
         'nivo-grid':
-          'linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px)',
+          'linear-gradient(rgb(var(--nivo-grid-line) / 0.04) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--nivo-grid-line) / 0.04) 1px, transparent 1px)',
         'nivo-grid-fine':
-          'linear-gradient(rgba(0, 0, 0, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.025) 1px, transparent 1px)',
+          'linear-gradient(rgb(var(--nivo-grid-line) / 0.025) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--nivo-grid-line) / 0.025) 1px, transparent 1px)',
       },
       backgroundSize: {
         grid: '64px 64px',

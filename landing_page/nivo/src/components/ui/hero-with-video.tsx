@@ -122,7 +122,7 @@ export const HeroWithVideo = ({
                   </motion.span>
                   <TextRotate
                     texts={[...heroRotatingPhrases]}
-                    mainClassName="inline-flex max-w-[min(100%,22rem)] text-nivo-paper px-2 sm:px-2.5 md:px-3 bg-nivo-forest overflow-hidden py-0.5 sm:py-1 md:py-1.5 justify-center rounded-lg align-baseline sm:max-w-none"
+                    mainClassName="inline-flex max-w-[min(100%,22rem)] text-white px-2 sm:px-2.5 md:px-3 bg-nivo-forest overflow-hidden py-0.5 sm:py-1 md:py-1.5 justify-center rounded-lg align-baseline sm:max-w-none"
                     staggerFrom="last"
                     initial={{ y: '100%' }}
                     animate={{ y: 0 }}
@@ -156,7 +156,7 @@ export const HeroWithVideo = ({
               </div>
               <button
                 onClick={handleEmailSubmit}
-                className="flex items-center gap-2 rounded-full bg-nivo-forest px-6 py-3 text-sm font-medium text-nivo-paper transition-colors hover:bg-nivo-forest-soft"
+                className="flex items-center gap-2 rounded-full bg-nivo-forest px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-nivo-forest-soft"
               >
                 {ctaLabel}
                 <ArrowRight className="h-4 w-4" />

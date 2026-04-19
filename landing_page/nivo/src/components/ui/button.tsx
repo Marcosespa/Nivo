@@ -13,7 +13,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   forest:
-    'bg-nivo-forest text-nivo-paper hover:bg-nivo-forest-soft shadow-forest',
+    'bg-nivo-forest text-white hover:bg-nivo-forest-soft shadow-forest',
   ink:
     'bg-nivo-ink text-nivo-paper hover:bg-nivo-stone',
   outline:

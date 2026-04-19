@@ -12,7 +12,12 @@ export const NivoMark = ({ className }: LogoMarkProps) => (
     className={cn('h-5 w-5', className)}
   >
     <rect width="64" height="64" rx="12" fill="currentColor" />
-    <g stroke="#FFFFFF" strokeLinecap="square" strokeLinejoin="miter" fill="none">
+    <g
+      stroke="rgb(var(--nivo-paper))"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      fill="none"
+    >
       <path d="M18 48 L18 16 L46 48 L46 16" strokeWidth="3" />
       <path d="M24 42 L24 24 L40 42 L40 24" strokeWidth="1.2" opacity="0.55" />
       <path d="M28 38 L28 30 L36 38 L36 30" strokeWidth="0.7" opacity="0.3" />

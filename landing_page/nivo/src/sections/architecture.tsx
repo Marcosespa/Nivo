@@ -77,20 +77,20 @@ export const Architecture = () => {
                 transition={{ delay: index * 0.12, duration: 0.4 }}
                 className={`relative w-full rounded-2xl border px-6 py-6 text-center ${
                   layer.accent
-                    ? 'border-nivo-forest bg-nivo-forest text-nivo-paper'
+                    ? 'border-nivo-forest bg-nivo-forest text-white'
                     : 'border-nivo-line bg-nivo-cloud-soft text-nivo-ink'
                 }`}
               >
                 <p
                   className={`font-mono text-[10px] font-medium uppercase tracking-[0.32em] ${
-                    layer.accent ? 'text-nivo-paper/70' : 'text-nivo-stone'
+                    layer.accent ? 'text-white/70' : 'text-nivo-stone'
                   }`}
                 >
                   {layer.label}
                 </p>
                 <p
                   className={`mt-2 font-display text-[17px] ${
-                    layer.accent ? 'text-nivo-paper' : 'text-nivo-ink'
+                    layer.accent ? 'text-white' : 'text-nivo-ink'
                   }`}
                 >
                   {layer.sublabel}

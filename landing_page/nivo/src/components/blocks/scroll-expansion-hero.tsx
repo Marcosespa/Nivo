@@ -289,7 +289,7 @@ const ScrollExpandMedia = ({
                   </div>
                 )}
 
-                <div className="relative z-10 mt-4 flex flex-col items-center text-center text-nivo-paper">
+                <div className="relative z-10 mt-4 flex flex-col items-center text-center text-white">
                   {date ? (
                     <p
                       className="text-lg font-medium tracking-[0.35em] uppercase text-nivo-quantum md:text-2xl"
@@ -315,7 +315,7 @@ const ScrollExpandMedia = ({
                 }`}
               >
                 <motion.h2
-                  className="text-4xl font-semibold uppercase tracking-[0.2em] text-nivo-paper md:text-6xl lg:text-7xl"
+                  className="text-4xl font-semibold uppercase tracking-[0.2em] text-white md:text-6xl lg:text-7xl"
                   style={{ transform: `translateX(-${textTranslateX}vw)` }}
                 >
                   {firstWord}

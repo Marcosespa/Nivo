@@ -49,6 +49,8 @@ La landing sigue una dirección visual sobria inspirada en `Apple`, `Notion` y `
 
 ### Paleta de color
 
+Los tokens viven en `src/styles/globals.css` como CSS variables y Tailwind los consume desde `tailwind.config.js`. Eso permite cambiar light/dark sin reescribir componentes.
+
 | Token | HEX | Uso |
 |---|---:|---|
 | `nivo-ink` | `#000000` | texto principal, logo, fondos oscuros puntuales |
@@ -61,6 +63,24 @@ La landing sigue una dirección visual sobria inspirada en `Apple`, `Notion` y `
 | `nivo-forest` | `#1A3C34` | acento principal, CTA, estados activos |
 | `nivo-forest-soft` | `#254F46` | hover/acento secundario |
 | `nivo-line` | `#D4D4D4` | líneas, separadores, bordes |
+
+### Modo claro / modo oscuro
+
+Nivo ahora soporta dos temas sin cambiar la estructura visual ni el sistema de spacing:
+
+- `light` mantiene la dirección Swiss editorial original
+- `dark` usa un fondo verde-negro profundo, superficies carbón y acento mint controlado
+- el sitio sigue `prefers-color-scheme` cuando no hay preferencia guardada
+- si el usuario elige un tema manualmente, la preferencia se guarda en `localStorage`
+- el selector incluye opción `sistema`, así que vuelve a seguir cambios del Mac o del navegador
+- la transición de colores es suave y respeta `prefers-reduced-motion`
+
+Tokens base:
+
+| Tema | Ink | Paper | Forest | Cloud Soft |
+|---|---:|---:|---:|---:|
+| Claro | `#000000` | `#FFFFFF` | `#1A3C34` | `#F3F3F3` |
+| Oscuro | `#F2F5F2` | `#080C0B` | `#65D6B5` | `#111614` |
 
 ### Reglas de uso del color
 
@@ -148,9 +168,9 @@ El hero actual vive en `src/components/ui/hero-with-video.tsx`.
 
 Características:
 
-- navbar local dentro del hero
 - título principal con CTA por email
 - video de fondo alusivo a la Tierra de noche
+- el navbar global integra el selector de tema
 - asset local:
 
 ```txt
@@ -178,7 +198,9 @@ La documentación del sistema visual queda repartida en:
 
 - `README.md` → visión general de marca, color y tipografía
 - `tailwind.config.js` → tokens y comentarios de uso
-- `src/styles/globals.css` → baseline tipográfico y notas globales
+- `src/styles/globals.css` → baseline tipográfico, CSS variables y transiciones de tema
+- `src/hooks/use-theme.tsx` → sincronización entre `localStorage`, sistema y DOM
+- `src/components/ui/theme-toggle.tsx` → control `Sistema / Claro / Oscuro`
 
 ## Nota de marca
 

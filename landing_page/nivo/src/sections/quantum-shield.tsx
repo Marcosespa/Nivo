@@ -75,7 +75,7 @@ export const QuantumShield = () => {
                 <span className="font-mono text-[10px] font-medium uppercase tracking-[0.32em] text-nivo-mist">
                   Paso {step.step}
                 </span>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-nivo-forest text-nivo-paper">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-nivo-forest text-white">
                   {step.icon}
                 </div>
               </div>

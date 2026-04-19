@@ -86,26 +86,26 @@ export const CategoryFraming = () => {
               viewport={{ once: true }}
               transition={{ delay: index * 0.08, duration: 0.35 }}
               className={`grid grid-cols-3 border-b border-nivo-line px-6 py-5 last:border-b-0 ${
-                row.highlight ? 'bg-nivo-forest text-nivo-paper' : ''
+                row.highlight ? 'bg-nivo-forest text-white' : ''
               }`}
             >
               <p
                 className={`text-[15px] ${
-                  row.highlight ? 'text-nivo-paper/80' : 'text-nivo-stone'
+                  row.highlight ? 'text-white/80' : 'text-nivo-stone'
                 }`}
               >
                 {row.technology}
               </p>
               <p
                 className={`text-[15px] ${
-                  row.highlight ? 'text-nivo-paper/80' : 'text-nivo-stone'
+                  row.highlight ? 'text-white/80' : 'text-nivo-stone'
                 }`}
               >
                 {row.problem}
               </p>
               <p
                 className={`font-display text-[15px] font-medium ${
-                  row.highlight ? 'text-nivo-paper' : 'text-nivo-ink'
+                  row.highlight ? 'text-white' : 'text-nivo-ink'
                 }`}
               >
                 {row.infrastructure}

@@ -5,8 +5,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { MenuToggleIcon } from '@/components/ui/menu-toggle-icon';
 import { NivoLogo } from '@/components/ui/logo';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useScroll } from '@/hooks/use-scroll';
 import {
+  isNavRouteActive,
   navProductLinks,
   navResourceLinks,
   navSecondaryLinks,
@@ -102,7 +104,12 @@ export const Navbar = () => {
                         <Link
                           to={item.href}
                           onClick={() => setOpenDropdown(null)}
-                          className="block rounded-lg px-3 py-2 text-sm text-nivo-stone transition-colors hover:bg-nivo-cloud-soft hover:text-nivo-ink"
+                          className={cn(
+                            'block rounded-lg px-3 py-2 text-sm transition-colors',
+                            isNavRouteActive(item.href, location.pathname)
+                              ? 'bg-nivo-cloud text-nivo-ink'
+                              : 'text-nivo-stone hover:bg-nivo-cloud-soft hover:text-nivo-ink'
+                          )}
                         >
                           {item.label}
                         </Link>
@@ -143,7 +150,7 @@ export const Navbar = () => {
               </li>
               {navSecondaryLinks.map((link) => {
                 const isDeveloper = link.href === '/developers';
-                const isActive = location.pathname === link.href;
+                const isActive = isNavRouteActive(link.href, location.pathname);
                 return (
                   <li key={link.href}>
                     <Link
@@ -166,25 +173,29 @@ export const Navbar = () => {
           </div>
 
           <div className="hidden items-center gap-2 lg:flex">
+            <ThemeToggle />
             <Button variant="ghost" size="sm" asChild>
               <Link to="/app">Entrar</Link>
             </Button>
             <a
               href="mailto:hola@nivo.money"
-              className="inline-flex h-10 items-center justify-center rounded-full bg-nivo-forest px-5 text-[13px] font-medium text-nivo-paper transition-colors hover:bg-nivo-forest-soft"
+              className="inline-flex h-10 items-center justify-center rounded-full bg-nivo-forest px-5 text-[13px] font-medium text-white transition-colors hover:bg-nivo-forest-soft"
             >
               Registrarme
             </a>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-nivo-line text-nivo-ink lg:hidden"
-            aria-label={open ? 'Cerrar navegación' : 'Abrir navegación'}
-          >
-            <MenuToggleIcon open={open} className="size-5" duration={300} />
-          </button>
+          <div className="flex items-center gap-2 lg:hidden">
+            <ThemeToggle />
+            <button
+              type="button"
+              onClick={() => setOpen(!open)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-nivo-line text-nivo-ink"
+              aria-label={open ? 'Cerrar navegación' : 'Abrir navegación'}
+            >
+              <MenuToggleIcon open={open} className="size-5" duration={300} />
+            </button>
+          </div>
         </nav>
 
         <AnimatePresence>
@@ -198,7 +209,7 @@ export const Navbar = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="fixed inset-0 z-40 bg-nivo-ink/30 backdrop-blur-[2px] lg:hidden"
+                className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[2px] lg:hidden"
               />
 
               <motion.div
@@ -227,7 +238,12 @@ export const Navbar = () => {
                         <Link
                           to={link.href}
                           onClick={() => setOpen(false)}
-                          className="flex items-center justify-between rounded-lg px-4 py-3 text-[15px] font-medium text-nivo-stone transition-colors hover:bg-nivo-cloud-soft hover:text-nivo-ink"
+                          className={cn(
+                            'flex items-center justify-between rounded-lg px-4 py-3 text-[15px] font-medium transition-colors hover:bg-nivo-cloud-soft hover:text-nivo-ink',
+                            isNavRouteActive(link.href, location.pathname)
+                              ? 'bg-nivo-cloud text-nivo-ink'
+                              : 'text-nivo-stone'
+                          )}
                         >
                           <span>{link.label}</span>
                           <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-nivo-mist">
@@ -288,7 +304,7 @@ export const Navbar = () => {
                             'flex items-center justify-between rounded-lg px-4 py-3 text-[15px] font-medium transition-colors hover:bg-nivo-cloud-soft',
                             link.href === '/developers'
                               ? 'text-nivo-forest hover:bg-nivo-forest/5'
-                              : location.pathname === link.href
+                              : isNavRouteActive(link.href, location.pathname)
                                 ? 'bg-nivo-cloud text-nivo-ink'
                                 : 'text-nivo-stone hover:text-nivo-ink'
                           )}
@@ -310,7 +326,7 @@ export const Navbar = () => {
                     </Button>
                     <a
                       href="mailto:hola@nivo.money"
-                      className="inline-flex h-11 w-full items-center justify-center rounded-full bg-nivo-forest px-5 text-[14px] font-medium text-nivo-paper transition-colors hover:bg-nivo-forest-soft"
+                      className="inline-flex h-11 w-full items-center justify-center rounded-full bg-nivo-forest px-5 text-[14px] font-medium text-white transition-colors hover:bg-nivo-forest-soft"
                     >
                       Registrarme gratis
                     </a>
