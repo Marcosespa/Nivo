@@ -8,6 +8,7 @@ import { Architecture } from '@/sections/architecture';
 import { QuantumSecurity } from '@/sections/quantum-security';
 import { CategoryFraming } from '@/sections/category-framing';
 import { Flywheel } from '@/sections/flywheel';
+import { SocialImpact } from '@/sections/social-impact';
 
 export const HomePage = () => {
   return (
@@ -31,6 +32,8 @@ export const HomePage = () => {
       <QuantumSecurity />
 
       <CategoryFraming />
+
+      <SocialImpact />
 
       <Flywheel />
     </>

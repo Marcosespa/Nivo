@@ -26,7 +26,7 @@ class NivoMvpApp extends StatelessWidget {
       title: 'Nivo',
       debugShowCheckedModeBanner: false,
       theme: NivoTheme.light(),
-      initialRoute: AppNavigator.home,
+      initialRoute: AppNavigator.landing,
       onGenerateRoute: AppNavigator.onGenerateRoute,
     );
   }

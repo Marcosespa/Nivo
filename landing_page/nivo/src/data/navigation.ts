@@ -22,6 +22,7 @@ export const navResourceLinks: NavResourceLink[] = [
   { label: 'Cómo funciona', hash: 'quantum-shield' },
   { label: 'Confianza', hash: 'trust' },
   { label: 'Arquitectura', hash: 'architecture' },
+  { label: 'Impacto social', hash: 'social-impact' },
 ];
 
 export const navSecondaryLinks: NavLink[] = [

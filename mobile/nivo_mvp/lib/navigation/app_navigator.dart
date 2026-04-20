@@ -24,7 +24,7 @@ abstract final class AppNavigator {
       case home:
         return NivoTransitions.fadeThrough(const PostAuthHomeScreen());
       default:
-        return NivoTransitions.fadeThrough(const PostAuthHomeScreen());
+        return NivoTransitions.slideFade(const LandingScreen());
     }
   }
 

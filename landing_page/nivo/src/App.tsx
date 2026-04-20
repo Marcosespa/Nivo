@@ -3,6 +3,7 @@ import { Navbar } from '@/components/layout/navbar';
 import { HomePage } from '@/pages/home';
 import { NotFoundPage } from '@/pages/not-found';
 import { SectionPage, type SectionPageProps } from '@/pages/section-page';
+import { socialImpactPageProps } from '@/data/social-impact';
 
 const appPage: SectionPageProps = {
   badge: 'App',
@@ -222,6 +223,7 @@ const App = () => {
         <Route path="/architecture" element={<SectionPage {...businessPage} />} />
         <Route path="/arquitectura" element={<SectionPage {...businessPage} />} />
         <Route path="/por-que" element={<HomePage />} />
+        <Route path="/impacto" element={<SectionPage {...socialImpactPageProps} />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </main>

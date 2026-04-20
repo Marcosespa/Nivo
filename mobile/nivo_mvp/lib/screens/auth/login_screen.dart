@@ -45,8 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return AuthScaffold(
       title: 'Entrar a Nivo',
-      subtitle:
-          'Vista previa del acceso móvil con la misma línea visual de la landing. Puedes escribir para probar el layout; no hay autenticación real.',
+      subtitle: 'Accede con tu correo y contraseña.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -75,15 +74,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     : Icons.visibility_off_outlined,
                 color: NivoColors.stoneSoft,
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Recuperación de cuenta y validación real quedan para la siguiente fase del MVP.',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              height: 1.4,
-              color: NivoColors.mist,
             ),
           ),
           const SizedBox(height: 20),

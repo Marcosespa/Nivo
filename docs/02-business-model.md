@@ -21,6 +21,10 @@ El insight clave: **la app B2C es la misión y el activo de marca**, mientras qu
 
 **Ajuste regulatorio MVP:** durante la validación inicial, Nivo no monetiza por custodiar saldos propios. Monetiza por suscripción, tarjeta virtual con aliado, spread/fee permitido sobre servicios de terceros, recibos verificables y API PQC. La captación directa queda fuera del MVP hasta tener SEDPE, COT/Sandbox o entidad vigilada aliada. Ahorro, crypto, acciones y FX se diseñan como módulos del neobanco, pero la ejecución/custodia vive en el partner autorizado hasta que Nivo tenga licencia propia.
 
+### Ámbito social (core de negocio)
+
+Parte de la propuesta de Nivo es contribuir a **mitigar la exclusión** que afecta a quienes trabajan en informalidad en Colombia —formación, crédito formal, bienestar— mediante la **escalera de la formalidad progresiva**: billeteras digitales que habiliten **historia crediticia real** para trabajadores informales y vendedores ambulantes, con miras a **alternativas al crédito informal** (incluido el “gota a gota”) vía productos formales y **crédito garantizado por el Estado** cuando el marco y los aliados lo permitan, siempre con **apoyo sin persecución**. El detalle narrativo y de alineación estratégica está en [**AMBITO_SOCIAL.md**](../AMBITO_SOCIAL.md) en la raíz del repositorio.
+
 ---
 
 ## 2. Segmentos y Propuesta de Valor
