@@ -1,13 +1,13 @@
 """Nivo — Withdrawal Service (ACH bank transfers)."""
 
 from __future__ import annotations
+import hmac
 import uuid
 import hashlib
 import secrets
 import logging
 from datetime import datetime, timezone
 
-import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -210,18 +210,14 @@ class WithdrawalService:
         if account.is_verified:
             raise WithdrawalError("Esta cuenta ya está verificada")
 
-        # Comparar hash del monto
-        provided_hash = hashlib.sha256(str(verification_amount_cop).encode()).digest()
+        # Comparar contra el hash almacenado en tiempo constante.
+        # El monto en plano se borra en cuanto la cuenta queda verificada (ver más abajo).
+        if account.verification_amount_hash is None:
+            raise WithdrawalError("La cuenta no tiene un micro-depósito pendiente.")
 
-        if not hashlib.pbkdf2_hmac(
-            "sha256",
-            str(verification_amount_cop).encode(),
-            b"",
-            1,
-        ) == hashlib.pbkdf2_hmac("sha256", str(account.verification_amount_cop or 0).encode(), b"", 1):
-            # Comparación simple sin PBKDF2 (inseguro pero rápido en MVP)
-            if verification_amount_cop != account.verification_amount_cop:
-                raise WithdrawalError("El monto verificado no coincide. Intenta de nuevo.")
+        provided_hash = hashlib.sha256(str(verification_amount_cop).encode()).digest()
+        if not hmac.compare_digest(provided_hash, account.verification_amount_hash):
+            raise WithdrawalError("El monto verificado no coincide. Intenta de nuevo.")
 
         # Marcar como verificada
         account.is_verified = True
@@ -267,6 +263,47 @@ class WithdrawalService:
             }
             for account in accounts
         ]
+
+    async def delete_bank_account(
+        self,
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        bank_account_id: uuid.UUID,
+    ) -> dict:
+        """
+        Elimina una cuenta bancaria del usuario.
+
+        Sólo se permite borrar cuentas no verificadas o que nunca recibieron retiros.
+        Esto desbloquea el flujo del usuario cuando registra una cuenta con datos
+        equivocados y necesita rehacer el micro-depósito.
+        """
+        stmt = select(BankAccountORM).where(
+            (BankAccountORM.id == bank_account_id) & (BankAccountORM.user_id == user_id)
+        )
+        result = await db.execute(stmt)
+        account = result.scalar_one_or_none()
+
+        if not account:
+            raise BankAccountNotFoundError("Cuenta bancaria no encontrada")
+
+        # Si la cuenta ya fue usada para retiros, no la borramos para preservar
+        # el ledger contra esa cuenta. Sólo permitimos delete si no hay tx ACH ligadas.
+        # En MVP basta con bloquear si is_verified=True (asumimos que sólo cuentas
+        # verificadas pueden retirar).
+        if account.is_verified:
+            raise WithdrawalError(
+                "No puedes eliminar una cuenta verificada. Contacta soporte."
+            )
+
+        await db.delete(account)
+        await db.flush()
+
+        logger.info(f"Bank account {bank_account_id} deleted for user {user_id}")
+
+        return {
+            "status": "deleted",
+            "message": "Cuenta eliminada. Puedes registrar otra cuenta cuando quieras.",
+        }
 
     async def initiate_withdrawal(
         self,
@@ -358,17 +395,19 @@ class WithdrawalService:
             # Debitar balance visual
             wallet.display_balance_cop -= total_debit
 
-            # Crear transacción
+            # Crear transacción. Retiros no se firman con ML-DSA en MVP — la
+            # autoría queda anclada a la cuenta verificada + JWT del usuario.
+            # Tanto ml_dsa_signature como signature_key_id son nullable.
             transaction = TransactionORM(
                 id=uuid.uuid4(),
                 sender_id=user_id,
-                receiver_id=user_id,  # Retiro a sí mismo
+                receiver_id=user_id,  # Retiro a sí mismo (debit + ACH out)
                 amount_cop=amount_cop,
                 status=TransactionStatusEnum.PENDING,
                 rail=SettlementRailEnum.ACH,
                 settlement_status=SettlementStatusEnum.PENDING,
-                ml_dsa_signature=b"",  # Retiros no firmados en MVP
-                signature_key_id=uuid.uuid4(),  # Dummy
+                ml_dsa_signature=None,
+                signature_key_id=None,
                 message=f"Withdrawal to {account.account_holder_name}",
             )
             db.add(transaction)

@@ -972,10 +972,17 @@ GET  /api/v1/topup/history      — Historial de recargas del usuario
 ---
 
 ### TASK-008 — Sistema de Retiros a Cuenta Bancaria (ACH)
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 6–8 horas
 **Prioridad:** MEDIA
+
+**Resumen del cierre (2026-05-06):**
+- Migración alembic `0008_add_bank_accounts.py` creada (la tabla sólo existía en el ORM).
+- `withdrawal_service.py`: comparación del micro-depósito ahora usa `hmac.compare_digest` contra `verification_amount_hash` (eliminado código muerto con `pbkdf2_hmac` redundante).
+- Bug de FK arreglado: `signature_key_id` y `ml_dsa_signature` se persisten como `None` (eran `uuid.uuid4()` dummy y `b""`, lo que podía romper la FK en Postgres real).
+- Endpoint nuevo `DELETE /api/v1/withdrawal/accounts/{id}` para cuentas no verificadas (resuelve el flujo de "registré la cuenta con datos errados" que el código mencionaba pero no exponía).
+- Tests `tests/test_withdrawal_flow.py`: 9 escenarios (registro, verificación correcta/incorrecta, retiro, no-verificada, saldo insuficiente, delete, segundo registro pendiente, número de cuenta nunca expuesto en listing ni en BD plana).
 
 **Descripción:**
 Permitir al usuario retirar dinero a su cuenta bancaria colombiana. En MVP usar Wompi
@@ -2781,8 +2788,8 @@ TASK-035 (Productos regulados) → Fase 3/Año 2 con partner autorizado
 | TASK-004 | Tests Crypto | 1 | [x] |
 | TASK-005 | Twilio OTP | 1 | [x] |
 | TASK-006 | KYC Truora | 1 | [ ] |
-| TASK-007 | PSE Wompi | 1 | [ ] |
-| TASK-008 | Retiros ACH | 1 | [ ] |
+| TASK-007 | PSE Wompi | 1 | [x] |
+| TASK-008 | Retiros ACH | 1 | [x] |
 | TASK-009 | Setup React Native | 2 | [ ] |
 | TASK-010 | Onboarding Mobile | 2 | [ ] |
 | TASK-011 | Home Screen | 2 | [ ] |

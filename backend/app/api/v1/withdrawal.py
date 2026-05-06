@@ -246,6 +246,49 @@ async def verify_bank_account(
         )
 
 
+@router.delete(
+    "/accounts/{account_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Eliminar cuenta bancaria no verificada",
+    description=(
+        "Elimina una cuenta bancaria del usuario. Solo permitido para cuentas "
+        "que aún no fueron verificadas (útil para rehacer un registro con datos errados)."
+    ),
+)
+async def delete_bank_account(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    account_id: str = Path(..., description="UUID de la cuenta bancaria"),
+) -> dict:
+    """
+    Elimina una cuenta bancaria no verificada.
+
+    Si la cuenta ya está verificada o tiene retiros asociados, retorna 400.
+    """
+    try:
+        account_uuid = uuid.UUID(account_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="UUID de cuenta inválido",
+        )
+
+    try:
+        return await withdrawal_service.delete_bank_account(
+            db, current_user.id, account_uuid
+        )
+    except BankAccountNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except WithdrawalError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
 @router.post(
     "/initiate",
     response_model=InitiateWithdrawalResponse,
