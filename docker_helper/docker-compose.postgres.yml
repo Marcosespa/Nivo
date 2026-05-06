@@ -24,9 +24,6 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
-    volumes:
-      - nivo_postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d:ro  # scripts SQL de inicialización (opcional)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?Set POSTGRES_USER} -d ${POSTGRES_DB:?Set POSTGRES_DB}"]
       interval: 5s
@@ -41,8 +38,6 @@ services:
     ports:
       - "6379:6379"
     command: redis-server --save 60 1 --loglevel warning
-    volumes:
-      - nivo_redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -64,13 +59,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - nivo_pgadmin_data:/var/lib/pgadmin
+#     volumes:
+#       # - nivo_pgadmin_data:/var/lib/pgadmin
 
-volumes:
-  nivo_postgres_data:
-    driver: local
-  nivo_redis_data:
-    driver: local
-  nivo_pgadmin_data:
-    driver: local
+# volumes:
+#   # Volúmenes deshabilitados en pruebas para evitar persistencia.
+#   nivo_postgres_data:
+#     driver: local
+#   nivo_redis_data:
+#     driver: local
+#   nivo_pgadmin_data:
+#     driver: local

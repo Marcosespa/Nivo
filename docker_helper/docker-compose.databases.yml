@@ -27,9 +27,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
     ports:
       - "5432:5432"
-    volumes:
-      - nivo_postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    # volumes:
+    #   # - nivo_postgres_data:/var/lib/postgresql/data
+    #   # - ./init-scripts:/docker-entrypoint-initdb.d:ro
     networks:
       - nivo-db-net
     healthcheck:
@@ -46,8 +46,8 @@ services:
     ports:
       - "6379:6379"
     command: redis-server --save 60 1 --loglevel warning
-    volumes:
-      - nivo_redis_data:/data
+    # volumes:
+    #   - nivo_redis_data:/data
     networks:
       - nivo-db-net
     healthcheck:
@@ -71,8 +71,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - nivo_pgadmin_data:/var/lib/pgadmin
+    # volumes:
+    #   - nivo_pgadmin_data:/var/lib/pgadmin
     networks:
       - nivo-db-net
 
@@ -81,10 +81,10 @@ networks:
     driver: bridge
     name: nivo-db-network
 
-volumes:
-  nivo_postgres_data:
-    driver: local
-  nivo_redis_data:
-    driver: local
-  nivo_pgadmin_data:
-    driver: local
+# volumes:
+#   nivo_postgres_data:
+#     driver: local
+#   nivo_redis_data:
+#     driver: local
+#   nivo_pgadmin_data:
+#     driver: local
