@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+import tempfile
 import uuid
 from pathlib import Path
 from typing import AsyncIterator
@@ -66,8 +67,12 @@ class FakeRedis:
                 self._data.pop(key, None)
         return deleted
 
-    async def set(self, key: str, value: object) -> bool:
-        self._data[key] = (value, None)
+    async def set(self, key: str, value: object, nx: bool = False, ex: int | None = None) -> bool | None:
+        self._purge(key)
+        if nx and key in self._data:
+            return None  # NX semantics: return None if key already exists
+        expires_at = (time.monotonic() + ex) if ex is not None else None
+        self._data[key] = (value, expires_at)
         return True
 
 
@@ -78,7 +83,7 @@ def anyio_backend():
 
 @pytest_asyncio.fixture
 async def db_session() -> AsyncIterator[AsyncSession]:
-    db_path = Path("/tmp/nivo_test.sqlite3")
+    db_path = Path(tempfile.gettempdir()) / "nivo_test.sqlite3"
     if db_path.exists():
         db_path.unlink()
 
@@ -105,6 +110,9 @@ async def client(db_session: AsyncSession, fake_redis: FakeRedis) -> AsyncIterat
     from app.main import app
     from app.api.v1.auth import get_redis as auth_get_redis
     from app.api.v1.payments import get_redis as payments_get_redis
+    from app.api.v1.kyc import get_redis as kyc_get_redis
+    from app.api.v1.topup import get_redis as topup_get_redis
+    from app.api.v1.admin import get_redis as admin_get_redis
 
     async def override_db() -> AsyncIterator[AsyncSession]:
         yield db_session
@@ -115,6 +123,9 @@ async def client(db_session: AsyncSession, fake_redis: FakeRedis) -> AsyncIterat
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[auth_get_redis] = override_redis
     app.dependency_overrides[payments_get_redis] = override_redis
+    app.dependency_overrides[kyc_get_redis] = override_redis
+    app.dependency_overrides[topup_get_redis] = override_redis
+    app.dependency_overrides[admin_get_redis] = override_redis
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as http_client:

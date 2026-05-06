@@ -11,10 +11,12 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
+import redis.asyncio as redis
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.orm.user import User as UserORM
@@ -26,9 +28,15 @@ from app.services.kyc_service import (
     InvalidWebhookSignatureError,
     KYCServiceUnavailableError,
 )
+from app.services.kyc_funnel_service import kyc_funnel_service, KYC_ALERT_THRESHOLD, KYC_ALERT_MIN_SAMPLE
+from app.services.alert_service import AlertService, AlertEvent
 
 router = APIRouter()
 kyc_service = KYCService()
+
+
+async def get_redis() -> redis.Redis:
+    return await redis.from_url(settings.REDIS_URL)
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -103,6 +111,7 @@ async def initiate_kyc(
 async def truora_webhook(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis_client: Annotated[redis.Redis, Depends(get_redis)],
 ) -> dict:
     """
     Webhook de Truora para reportar resultado de verificación.
@@ -125,16 +134,57 @@ async def truora_webhook(
         return {"status": "ok"}
 
     # Procesar webhook
+    kyc_result_processed = False
     try:
         await kyc_service.process_webhook(db, payload, signature, ip_address)
+        kyc_result_processed = payload.get("status") in {"approved", "declined"}
     except InvalidWebhookSignatureError:
-        # Log pero no fallar (siempre retornar 200)
         pass
     except Exception:
-        # Cualquier otro error, también silencioso
         pass
 
+    # Chequear tasa de aprobación KYC y alertar si cae < 70%
+    if kyc_result_processed:
+        try:
+            rate, sample = await kyc_funnel_service.get_kyc_approval_rate_24h(db)
+            if rate is not None and sample >= KYC_ALERT_MIN_SAMPLE and rate < KYC_ALERT_THRESHOLD:
+                await AlertService(redis_client).send_rate_alert(
+                    AlertEvent.KYC_LOW_APPROVAL_RATE,
+                    {"tasa_24h": f"{rate:.1%}", "muestra": str(sample)},
+                )
+        except Exception:
+            pass
+
     return {"status": "ok"}
+
+
+@router.get(
+    "/funnel",
+    status_code=status.HTTP_200_OK,
+    summary="Funnel de conversión KYC",
+    description=(
+        "Retorna tasas de conversión por etapa para los últimos N días. "
+        "Datos de negocio agregados — sin PII. Requiere JWT."
+    ),
+)
+async def get_kyc_funnel(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    days: int = 1,
+) -> dict:
+    """
+    Funnel de conversión KYC:
+      REGISTERED → KYC_INITIATED → KYC_RESULT → FIRST_DEPOSIT
+
+    Parámetros:
+      days: ventana de tiempo en días (default 1 = últimas 24h)
+    """
+    if days < 1 or days > 90:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="days debe estar entre 1 y 90",
+        )
+    return await kyc_funnel_service.get_funnel_stats(db, days=days)
 
 
 @router.get(

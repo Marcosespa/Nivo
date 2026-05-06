@@ -19,13 +19,14 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 import redis.asyncio as redis
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core import telemetry
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -34,6 +35,8 @@ from app.core.security import (
 from app.services.otp_service import OTPService
 from app.services.auth_service import AuthService
 from app.services.sms_service import SMSService
+from app.services.kyc_funnel_service import kyc_funnel_service
+from app.models.orm.kyc_funnel_event import KYCFunnelStepEnum
 from app.utils.validators import validate_colombian_phone
 
 router = APIRouter()
@@ -98,7 +101,8 @@ async def get_redis() -> redis.Redis:
     description="Envía un código OTP de 6 dígitos al número de celular. Válido por 5 minutos.",
 )
 async def request_otp(
-    request: OTPRequest,
+    body: OTPRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     redis_client: Annotated[redis.Redis, Depends(get_redis)],
 ):
@@ -113,7 +117,7 @@ async def request_otp(
     """
     # Validar formato
     try:
-        phone_normalized = validate_colombian_phone(request.phone_number)
+        phone_normalized = validate_colombian_phone(body.phone_number)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -153,8 +157,10 @@ async def request_otp(
         "phone_number": phone_normalized[:7] + "****",  # Enmascarar
     }
 
-    # Dev-only helper para pruebas locales cuando no hay SMS real.
-    if settings.ENVIRONMENT == "development":
+    # dev_otp solo si ENVIRONMENT=development Y la petición viene de localhost.
+    # Doble gate: si ENVIRONMENT se mal-configura en staging, la IP externa lo bloquea.
+    _client_host = http_request.client.host if http_request.client else ""
+    if settings.ENVIRONMENT == "development" and _client_host in {"127.0.0.1", "::1"}:
         response["dev_otp"] = otp_code
 
     return response
@@ -196,13 +202,17 @@ async def verify_otp(
 
     # Verificar OTP
     otp_service = OTPService(redis_client)
-    try:
-        is_valid = await otp_service.verify(phone_normalized, request.otp_code, "login")
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=str(e),
-        )
+    with telemetry.span("auth.otp.verify") as otp_span:
+        otp_span.set_attribute("auth.phone_hash", telemetry.hash_user_id(phone_normalized))
+        try:
+            is_valid = await otp_service.verify(phone_normalized, request.otp_code, "login")
+        except ValueError as e:
+            otp_span.set_attribute("auth.result", "rate_limited")
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=str(e),
+            )
+        otp_span.set_attribute("auth.result", "valid" if is_valid else "invalid")
 
     if not is_valid:
         raise HTTPException(
@@ -214,10 +224,11 @@ async def verify_otp(
     user, is_new = await auth_service.get_or_create_user(db, phone_normalized)
     await db.commit()
 
-    # Si es nuevo usuario: crear llaves PQC
+    # Si es nuevo usuario: crear llaves PQC + registrar en funnel
     pqc_key = None
     if is_new:
         pqc_key = await auth_service.create_pqc_keys_for_user(db, user.id)
+        await kyc_funnel_service.track(db, user.id, KYCFunnelStepEnum.REGISTERED)
         await db.commit()
     else:
         # Si es usuario existente, recuperar llave activa

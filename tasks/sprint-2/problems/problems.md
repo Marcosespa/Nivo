@@ -9,7 +9,8 @@
 
 | # | Fecha | Tarea | Descripción | Estado | Resolución |
 |---|-------|-------|-------------|--------|------------|
-| — | — | — | Sin issues registrados aún — sprint no iniciado | — | — |
+| 1 | 2026-05-04 | T-09 | El webhook `/topup/webhook` no tenía Redis inyectado — no podía usarse `AlertService`. Se agregó `Depends(get_redis)` al handler. | RESUELTO | Añadido `get_redis()` local en `topup.py` y `redis_client` como parámetro del endpoint. |
+| 2 | 2026-05-04 | T-09 | `dev_seed` solo se registraba en `development` pero `admin` debe estar disponible también en `staging` (para test del canal antes de ir a prod). | RESUELTO | Cambio de `== "development"` a `in {"development", "staging"}` en `main.py`. |
 
 ---
 

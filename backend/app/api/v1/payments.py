@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
@@ -168,7 +168,8 @@ class PaymentHistoryResponse(BaseModel):
     ),
 )
 async def initiate_payment(
-    request: PaymentInitiateRequest,
+    body: PaymentInitiateRequest,
+    http_request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     redis_client: Annotated[redis.Redis, Depends(get_redis)],
@@ -187,9 +188,9 @@ async def initiate_payment(
             db=db,
             redis_client=redis_client,
             sender_id=current_user.id,
-            receiver_phone=request.receiver_phone,
-            amount_cop=request.amount_cop,
-            message=request.message,
+            receiver_phone=body.receiver_phone,
+            amount_cop=body.amount_cop,
+            message=body.message,
         )
         otp_code = await OTPService(redis_client).generate_and_store(
             current_user.phone_number,
@@ -214,7 +215,13 @@ async def initiate_payment(
         quantum_shield=True,
         pqc_algorithm=settings.PQC_ALGORITHM,
         expires_in_seconds=result["expires_in_seconds"],
-        dev_otp=otp_code if settings.ENVIRONMENT == "development" else None,
+        dev_otp=(
+            otp_code
+            if settings.ENVIRONMENT == "development"
+            and http_request.client is not None
+            and http_request.client.host in {"127.0.0.1", "::1"}
+            else None
+        ),
     )
 
 

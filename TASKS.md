@@ -907,7 +907,7 @@ GET  /api/v1/kyc/status         — Estado actual del KYC del usuario autenticad
 ---
 
 ### TASK-007 — Integrar Pasarela PSE (Wompi) para Recargas
-**Estado:** [ ] PENDING
+**Estado:** [x] DONE
 **Agente sugerido:** backend
 **Estimado:** 8–10 horas
 **Prioridad:** ALTA
@@ -1619,10 +1619,11 @@ Botón: "Reservar mi lugar"
 ---
 
 ### TASK-019 — CI/CD Pipeline con GitHub Actions
-**Estado:** [ ] PENDING
+**Estado:** [>] IN_PROGRESS
 **Agente sugerido:** devops
 **Estimado:** 6–8 horas
 **Prioridad:** ALTA
+**Nota parcial (T-04 done):** Job `migration-check` en `.github/workflows/ci.yml` implementado — PostgreSQL 16 limpio, `alembic upgrade head`, `alembic check`, downgrade/upgrade cycle. Falta: `backend-deploy-staging.yml`, `backend-deploy-prod.yml`, `Dockerfile.prod`, branch protection en GitHub (UI).
 
 **Descripción:**
 Configurar pipelines de CI/CD para el backend. Cada PR debe pasar tests antes de merge.
@@ -2258,7 +2259,8 @@ exchange = client.key_exchange(
 ---
 
 ### TASK-030 — Preparación para Ronda Seed: Métricas y Data Room
-**Estado:** [ ] PENDING
+**Estado:** [>] IN_PROGRESS
+**Parcialmente completado (T-13):** business_metrics_daily ORM + MetricsService + admin endpoints + 15 tests. Pendiente: dashboard Metabase, data dictionary, PostHog/Mixpanel evaluation.
 **Agente sugerido:** ceo
 **Estimado:** 8–10 horas
 **Prioridad:** ALTA (Mes 6)
@@ -2310,10 +2312,11 @@ Los VCs necesitan verificar que la tecnología es real.
 ---
 
 ### TASK-031 — Monitoreo y Alertas de Producción
-**Estado:** [ ] PENDING
+**Estado:** [>] IN_PROGRESS
 **Agente sugerido:** devops
 **Estimado:** 4–5 horas
 **Prioridad:** ALTA
+**Nota parcial (T-05 + T-09 done):** OpenTelemetry instrumentado en rutas críticas (auth OTP, P2P execute, webhook firma, wallet credit) con FastAPIInstrumentor + SQLAlchemyInstrumentor. AlertService con Slack Block Kit para webhooks fallidos (3 fallos/10 min → alerta, rate limit 5 min). Falta: Sentry integration, GCP Cloud Monitoring, runbooks en `docs/runbooks/`, dashboard golden signals.
 
 **Descripción:**
 Configurar Sentry + GCP Cloud Monitoring + alertas para el equipo.

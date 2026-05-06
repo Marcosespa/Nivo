@@ -16,7 +16,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, or_
@@ -146,7 +146,8 @@ async def _provision_user(
     ),
 )
 async def seed_test_data(
-    request: SeedRequest,
+    body: SeedRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SeedResponse:
     """
@@ -157,8 +158,12 @@ async def seed_test_data(
     - El receiver siempre queda con saldo 0 (solo recibe).
     - Retorna access_token y refresh_token listos para usar.
     """
-    sender_info = await _provision_user(db, request.sender_phone, request.seed_balance_cop)
-    receiver_info = await _provision_user(db, request.receiver_phone, 0)
+    _host = http_request.client.host if http_request.client else ""
+    if _host not in {"127.0.0.1", "::1"}:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    sender_info = await _provision_user(db, body.sender_phone, body.seed_balance_cop)
+    receiver_info = await _provision_user(db, body.receiver_phone, 0)
 
     await db.commit()
 
@@ -181,13 +186,18 @@ async def seed_test_data(
     description="Elimina los usuarios de prueba creados por /seed. Solo DEV.",
 )
 async def clear_seed_data(
-    request: SeedRequest,
+    body: SeedRequest,
+    http_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SeedCleanupResponse:
     """Elimina los usuarios de prueba para un reset limpio."""
+    _host = http_request.client.host if http_request.client else ""
+    if _host not in {"127.0.0.1", "::1"}:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
     user_ids: list[uuid.UUID] = []
 
-    for phone in [request.sender_phone, request.receiver_phone]:
+    for phone in [body.sender_phone, body.receiver_phone]:
         try:
             phone_normalized = validate_colombian_phone(phone)
         except ValueError:

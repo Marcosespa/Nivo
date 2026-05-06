@@ -10,6 +10,7 @@ from sqlalchemy import select
 import redis.asyncio as redis
 
 from app.core.config import settings
+from app.core import telemetry
 from app.crypto.service import CryptoService
 from app.models.orm.user import User as UserORM
 from app.models.orm.transaction import (
@@ -251,111 +252,107 @@ class PaymentService:
         receiver = None
         transaction = None
 
-        # Asegurar que cualquier transacción implícita previa quede cerrada antes del bloque atómico.
         await db.rollback()
 
-        # Usar transacción de BD para atomicidad
-        async with db.begin():
-            # Re-verificar límites antes de ejecutar
-            stmt = select(UserORM).where(UserORM.id == sender_id)
-            result = await db.execute(stmt)
-            sender = result.scalar_one()
-            receiver_stmt = select(UserORM).where(UserORM.id == receiver_id)
-            receiver_result = await db.execute(receiver_stmt)
-            receiver = receiver_result.scalar_one()
+        # Span cubre la ejecución atómica completa: DB lock → PQC sign → commit
+        with telemetry.span("payment.p2p.execute") as pay_span:
+            pay_span.set_attribute("payment.user_id_hash", telemetry.hash_user_id(sender_id))
+            pay_span.set_attribute("payment.amount_range", telemetry.amount_range(amount_cop))
+            pay_span.set_attribute("payment.rail", "internal")
+            pay_span.set_attribute("payment.pqc_algorithm", settings.PQC_SIGNATURE_ALGORITHM)
 
-            within_limit = await self.wallet_service.check_daily_limit(
-                db,
-                sender_id,
-                sender.plan.value,
-                amount_cop,
-            )
-            if not within_limit:
-                raise DailyLimitExceededError("Límite diario excedido (cambió desde initiate)")
+            async with db.begin():
+                stmt = select(UserORM).where(UserORM.id == sender_id)
+                result = await db.execute(stmt)
+                sender = result.scalar_one()
+                receiver_stmt = select(UserORM).where(UserORM.id == receiver_id)
+                receiver_result = await db.execute(receiver_stmt)
+                receiver = receiver_result.scalar_one()
 
-            # Recuperar llave PQC del usuario para firmar
-            stmt = select(PQCKeyORM).where(
-                (PQCKeyORM.user_id == sender_id) & (PQCKeyORM.is_active == True)
-            )
-            result = await db.execute(stmt)
-            pqc_key = result.scalar_one()
+                within_limit = await self.wallet_service.check_daily_limit(
+                    db,
+                    sender_id,
+                    sender.plan.value,
+                    amount_cop,
+                )
+                if not within_limit:
+                    raise DailyLimitExceededError("Límite diario excedido (cambió desde initiate)")
 
-            sender_wallet_stmt = (
-                select(WalletORM)
-                .where(WalletORM.user_id == sender_id)
-                .with_for_update()
-            )
-            sender_wallet_result = await db.execute(sender_wallet_stmt)
-            sender_wallet = sender_wallet_result.scalar_one()
+                stmt = select(PQCKeyORM).where(
+                    (PQCKeyORM.user_id == sender_id) & (PQCKeyORM.is_active == True)
+                )
+                result = await db.execute(stmt)
+                pqc_key = result.scalar_one()
 
-            receiver_wallet_stmt = (
-                select(WalletORM)
-                .where(WalletORM.user_id == receiver_id)
-                .with_for_update()
-            )
-            receiver_wallet_result = await db.execute(receiver_wallet_stmt)
-            receiver_wallet = receiver_wallet_result.scalar_one_or_none()
-            if receiver_wallet is None:
-                receiver_wallet = await self.wallet_service.get_or_create_wallet(db, receiver_id)
+                sender_wallet_stmt = (
+                    select(WalletORM)
+                    .where(WalletORM.user_id == sender_id)
+                    .with_for_update()
+                )
+                sender_wallet_result = await db.execute(sender_wallet_stmt)
+                sender_wallet = sender_wallet_result.scalar_one()
 
-            if sender_wallet.is_frozen:
-                raise WalletFrozenError("Tu billetera está congelada. Contacta al soporte.")
-            if sender_wallet.display_balance_cop < amount_cop:
-                raise InsufficientFundsError("Saldo insuficiente en tu billetera")
+                receiver_wallet_stmt = (
+                    select(WalletORM)
+                    .where(WalletORM.user_id == receiver_id)
+                    .with_for_update()
+                )
+                receiver_wallet_result = await db.execute(receiver_wallet_stmt)
+                receiver_wallet = receiver_wallet_result.scalar_one_or_none()
+                if receiver_wallet is None:
+                    receiver_wallet = await self.wallet_service.get_or_create_wallet(db, receiver_id)
 
-            # Construir payload para firma
-            now = datetime.now(timezone.utc)
-            tx_payload = (
-                f"tx:{tx_id}|"
-                f"sender:{sender_id}|"
-                f"receiver:{receiver_id}|"
-                f"amount:{amount_cop}|"
-                f"ts:{now.isoformat()}"
-            ).encode()
+                if sender_wallet.is_frozen:
+                    raise WalletFrozenError("Tu billetera está congelada. Contacta al soporte.")
+                if sender_wallet.display_balance_cop < amount_cop:
+                    raise InsufficientFundsError("Saldo insuficiente en tu billetera")
 
-            # Firmar con llave PQC del usuario
-            # IMPORTANTE: En producción, la llave privada viene de HSM
-            # Por ahora simulamos con llave efímera (SOLO PARA DESARROLLO)
-            signing_kp = self.crypto.generate_signing_keypair()
-            signed_tx = self.crypto.sign_transaction(
-                tx_id=tx_id,
-                payload=tx_payload,
-                signing_secret_key=signing_kp.secret_key,
-                public_key_fingerprint=pqc_key.key_fingerprint,
-            )
+                now = datetime.now(timezone.utc)
+                tx_payload = (
+                    f"tx:{tx_id}|"
+                    f"sender:{sender_id}|"
+                    f"receiver:{receiver_id}|"
+                    f"amount:{amount_cop}|"
+                    f"ts:{now.isoformat()}"
+                ).encode()
 
-            # Crear transacción en BD
-            transaction = TransactionORM(
-                id=uuid.uuid4(),
-                sender_id=sender_id,
-                receiver_id=receiver_id,
-                amount_cop=amount_cop,
-                status=TransactionStatusEnum.COMPLETED,
-                rail=SettlementRailEnum.INTERNAL,
-                provider_reference=f"NIVO-{tx_id[:8].upper()}",
-                settlement_status=SettlementStatusEnum.SETTLED,
-                ml_dsa_signature=signed_tx.signature,
-                signature_key_id=pqc_key.id,
-                message=message,
-                created_at=now,
-                confirmed_at=now,
-            )
-            transaction.sender = sender
-            transaction.receiver = receiver
-            db.add(transaction)
-            await db.flush()
+                # IMPORTANTE: En producción la llave privada viene de HSM (TASK-021)
+                signing_kp = self.crypto.generate_signing_keypair()
+                signed_tx = self.crypto.sign_transaction(
+                    tx_id=tx_id,
+                    payload=tx_payload,
+                    signing_secret_key=signing_kp.secret_key,
+                    public_key_fingerprint=pqc_key.key_fingerprint,
+                )
 
-            # Actualizar balances visuales
-            sender_wallet.display_balance_cop -= amount_cop
-            receiver_wallet.display_balance_cop += amount_cop
+                transaction = TransactionORM(
+                    id=uuid.uuid4(),
+                    sender_id=sender_id,
+                    receiver_id=receiver_id,
+                    amount_cop=amount_cop,
+                    status=TransactionStatusEnum.COMPLETED,
+                    rail=SettlementRailEnum.INTERNAL,
+                    provider_reference=f"NIVO-{tx_id[:8].upper()}",
+                    settlement_status=SettlementStatusEnum.SETTLED,
+                    ml_dsa_signature=signed_tx.signature,
+                    signature_key_id=pqc_key.id,
+                    message=message,
+                    created_at=now,
+                    confirmed_at=now,
+                )
+                transaction.sender = sender
+                transaction.receiver = receiver
+                db.add(transaction)
+                await db.flush()
 
-            # Limpiar transacción pendiente de Redis
-            # (no se puede dentro de transacción de BD, se hace después del commit)
+                sender_wallet.display_balance_cop -= amount_cop
+                receiver_wallet.display_balance_cop += amount_cop
+
+            pay_span.set_attribute("payment.result", "completed")
 
         # Eliminar de Redis post-commit
         await redis_client.delete(pending_tx_key)
 
-        # Enviar notificación SMS al receptor (no bloquea)
         try:
             sender_name = sender.full_name or sender.phone_number
             await self.sms_service.send_payment_notification(

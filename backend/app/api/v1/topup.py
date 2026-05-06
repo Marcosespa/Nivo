@@ -15,6 +15,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import redis.asyncio as redis
+
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -25,9 +27,14 @@ from app.services.payment_gateway_service import (
     PaymentGatewayUnavailableError,
     InvalidWebhookSignatureError,
 )
+from app.services.alert_service import AlertService, AlertEvent
 
 router = APIRouter()
 gateway_service = PaymentGatewayService()
+
+
+async def get_redis() -> redis.Redis:
+    return await redis.from_url(settings.REDIS_URL)
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -139,40 +146,40 @@ async def initiate_topup(
     summary="Webhook de Wompi",
     description="Endpoint para que Wompi reporte el resultado del pago. "
     "NO requiere JWT. Siempre retorna 200.",
-    include_in_schema=False,  # No mostrar en OpenAPI (endpoint backend)
+    include_in_schema=False,
 )
 async def wompi_webhook(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis_client: redis.Redis = Depends(get_redis),
 ) -> dict:
     """
     Webhook de Wompi para reportar resultado de pago.
-
-    Wompi envía:
-    - Payload JSON en el body
-    - Firma SHA-256 en el header X-Event-Checksum
-
-    IMPORTANTE: Siempre retorna 200 para no alertar a atacantes.
+    Siempre retorna 200 — nunca revelar estado interno a Wompi.
     """
-    # Extraer firma del header
     signature = request.headers.get("X-Event-Checksum", "")
     ip_address = request.client.host if request.client else "unknown"
 
-    # Leer payload
     try:
         payload = await request.json()
     except Exception:
         return {"status": "ok"}
 
-    # Procesar webhook
+    alert_svc = AlertService(redis_client)
+    wompi_tx_id = payload.get("data", {}).get("id", "unknown")
+
     try:
         await gateway_service.process_webhook(db, payload, signature, ip_address)
     except InvalidWebhookSignatureError:
-        # Log pero no fallar
-        pass
+        await alert_svc.track_and_alert(
+            AlertEvent.WEBHOOK_INVALID_SIGNATURE,
+            context={"ip": ip_address, "wompi_tx_id": wompi_tx_id},
+        )
     except Exception:
-        # Cualquier otro error, también silencioso
-        pass
+        await alert_svc.track_and_alert(
+            AlertEvent.WEBHOOK_PROCESSING_FAILED,
+            context={"ip": ip_address, "wompi_tx_id": wompi_tx_id},
+        )
 
     return {"status": "ok"}
 

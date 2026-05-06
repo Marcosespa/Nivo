@@ -13,6 +13,8 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.models.orm.user import User as UserORM, KYCStatusEnum
+from app.models.orm.kyc_funnel_event import KYCFunnelStepEnum, KYCFunnelResultEnum
+from app.services.kyc_funnel_service import kyc_funnel_service
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +136,8 @@ class KYCService:
                 user.kyc_provider_id = check_id
                 await db.flush()
 
+                await kyc_funnel_service.track(db, user_id, KYCFunnelStepEnum.KYC_INITIATED)
+
                 return {
                     "check_id": check_id,
                     "verification_url": verification_link,
@@ -216,6 +220,18 @@ class KYCService:
             return
 
         await db.flush()
+
+        funnel_result = KYCFunnelResultEnum.COMPLETED if status == "approved" else KYCFunnelResultEnum.FAILED
+        failure_reason = (
+            payload.get("rejection_reason")
+            or payload.get("reason")
+            or payload.get("failure_details")
+        )
+        await kyc_funnel_service.track(
+            db, user.id, KYCFunnelStepEnum.KYC_RESULT,
+            result=funnel_result,
+            failure_reason=failure_reason,
+        )
 
     async def get_status(
         self,

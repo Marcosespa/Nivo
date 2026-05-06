@@ -67,9 +67,9 @@ class Transaction(Base):
         index=True,
     )
 
-    # Firma cuántica
-    ml_dsa_signature: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
-    signature_key_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("pqc_keys.id", ondelete="RESTRICT"), nullable=False)
+    # Firma cuántica — NULL en top-ups PSE (autenticados por HMAC de Wompi, no PQC del usuario)
+    ml_dsa_signature: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    signature_key_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("pqc_keys.id", ondelete="SET NULL"), nullable=True)
 
     # Regulatorio / Settlement
     rail: Mapped[SettlementRailEnum] = mapped_column(
@@ -112,7 +112,7 @@ class Transaction(Base):
     # Relaciones
     sender: Mapped[User] = relationship("User", foreign_keys=[sender_id], back_populates="sent_transactions")
     receiver: Mapped[User] = relationship("User", foreign_keys=[receiver_id], back_populates="received_transactions")
-    signature_key: Mapped[PQCKey] = relationship("PQCKey", back_populates="transactions")
+    signature_key: Mapped[PQCKey | None] = relationship("PQCKey", back_populates="transactions")
 
     def __repr__(self) -> str:
         return f"<Transaction id={self.id} amount={self.amount_cop} status={self.status.value}>"

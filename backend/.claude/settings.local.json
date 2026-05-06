@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/test_topup_webhook_wompi.py -v)",
+      "Bash(python -c \"import app.models.orm\")"
+    ]
+  }
+}

@@ -10,20 +10,30 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.v1 import auth, users, payments, crypto, health, kyc, topup, withdrawal, dev_seed
+from app.core.telemetry import setup_telemetry
+from app.api.v1 import auth, users, payments, crypto, health, kyc, topup, withdrawal, dev_seed, admin
 from app.crypto.service import CryptoService
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Inicialización y cleanup del ciclo de vida de la app."""
-    # Startup
+    # OpenTelemetry — must run before first request
+    if settings.TELEMETRY_ENABLED:
+        from app.core.database import engine as _db_engine
+        setup_telemetry(
+            service_name=settings.APP_NAME,
+            otlp_endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT,
+            environment=settings.ENVIRONMENT,
+            engine=_db_engine.sync_engine,
+        )
+
     await init_db()
 
-    # Verificar integridad del módulo PQC al arrancar
     crypto_service = CryptoService()
     pqc_ok = await crypto_service.health_check()
     if not pqc_ok:
@@ -48,6 +58,9 @@ app = FastAPI(
     redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
     lifespan=lifespan,
 )
+
+# FastAPI auto-instrumentation — uses global TracerProvider set during lifespan
+FastAPIInstrumentor.instrument_app(app, excluded_urls="health,^/$")
 
 # ─── Middleware ────────────────────────────────────────────────────────────────
 
@@ -76,12 +89,17 @@ app.include_router(topup.router, prefix="/api/v1/topup", tags=["Top-ups"])
 app.include_router(withdrawal.router, prefix="/api/v1/withdrawal", tags=["Retiros"])
 app.include_router(crypto.router, prefix="/api/v1/crypto", tags=["PQC API B2B"])
 
-# ⚠️  Dev-only: seed de datos de prueba — NO disponible en producción
-if settings.ENVIRONMENT == "development":
+# ⚠️  Dev/staging only — no disponible en producción
+if settings.ENVIRONMENT in {"development", "staging"}:
     app.include_router(
         dev_seed.router,
         prefix="/api/v1/dev",
         tags=["⚠️ Dev Only"],
+    )
+    app.include_router(
+        admin.router,
+        prefix="/api/v1/admin",
+        tags=["⚠️ Admin"],
     )
 
 

@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     PAYMENT_GATEWAY_API_KEY: str = ""
     PAYMENT_GATEWAY_SECRET: str = ""
     WOMPI_EVENTS_SECRET: str = ""
+    WOMPI_INTEGRITY_SECRET: str = ""
     MONEY_CUSTODY_MODE: Literal[
         "non_custodial_middleware",
         "bank_partner",
@@ -107,6 +108,20 @@ class Settings(BaseSettings):
     RATE_LIMIT_AUTH: str = "10/minute"
     RATE_LIMIT_PAYMENTS: str = "30/minute"
     RATE_LIMIT_GENERAL: str = "100/minute"
+
+    # ─── Alertas ──────────────────────────────────────────────────────────────
+    SLACK_WEBHOOK_URL: str = ""                 # Incoming Webhook de #alertas-criticas
+    ALERT_FAILURE_THRESHOLD: int = 3            # Fallos antes de enviar alerta
+    ALERT_FAILURE_WINDOW_SECONDS: int = 600     # Ventana de conteo (10 min)
+    ALERT_RATE_LIMIT_SECONDS: int = 300         # Mínimo entre alertas del mismo tipo
+
+    # ─── OpenTelemetry ────────────────────────────────────────────────────────
+    TELEMETRY_ENABLED: bool = True
+    # OTLP HTTP endpoint. Examples:
+    #   GCP via collector : http://otel-collector:4318
+    #   Jaeger (staging)  : http://jaeger:4318
+    #   Empty             → ConsoleSpanExporter in development, no-op otherwise
+    OTEL_EXPORTER_OTLP_ENDPOINT: str = ""
 
     @field_validator("JWT_SECRET_KEY")
     @classmethod
