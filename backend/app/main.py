@@ -7,6 +7,8 @@ Autor: Nivo Engineering
 """
 
 from contextlib import asynccontextmanager
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -33,6 +35,8 @@ from app.core.telemetry import setup_telemetry
 from app.api.v1 import auth, users, payments, crypto, health, kyc, topup, withdrawal, dev_seed, admin
 from app.crypto.service import CryptoService
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -54,12 +58,17 @@ async def lifespan(app: FastAPI):
     if not pqc_ok:
         raise RuntimeError("PQC module failed health check — refusing to start")
 
-    print(f"✅ Nivo API iniciada — PQC: {settings.PQC_ALGORITHM} | Hybrid: {settings.HYBRID_MODE}")
+    logger.info(
+        "Nivo API started — PQC=%s hybrid=%s environment=%s",
+        settings.PQC_ALGORITHM,
+        settings.HYBRID_MODE,
+        settings.ENVIRONMENT,
+    )
 
     yield
 
     # Shutdown
-    print("🔒 Nivo API cerrando...")
+    logger.info("Nivo API shutting down")
 
 
 app = FastAPI(

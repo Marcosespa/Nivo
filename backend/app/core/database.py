@@ -1,10 +1,14 @@
 """Nivo — Configuración de base de datos (SQLAlchemy async)."""
 
+import logging
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from app.core.config import settings
 from app.models.base import Base  # noqa: F401 — re-exportado para que alembic/env.py lo importe
+
+logger = logging.getLogger(__name__)
 
 engine_kwargs = {"echo": settings.DEBUG}
 if not settings.DATABASE_URL.startswith("sqlite+aiosqlite"):
@@ -27,7 +31,7 @@ async def init_db() -> None:
     """Inicializa la conexión y verifica la BD al arrancar."""
     async with engine.begin() as conn:
         await conn.execute(text("SELECT 1"))
-    print("✅ Base de datos conectada")
+    logger.info("Database connection verified")
 
 
 async def get_db():

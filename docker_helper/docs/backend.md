@@ -48,7 +48,7 @@ por eso están en el `command` y no en el `entrypoint`.
 
 | Variable              | Valor por defecto (dev)                              | Descripción                        |
 |-----------------------|------------------------------------------------------|------------------------------------|
-| `DATABASE_URL`        | `postgresql+asyncpg://Nivo:Nivo@postgres:5432/Nivo_dev` | Conexión a PostgreSQL           |
+| `DATABASE_URL`        | `postgresql+asyncpg://nivo_user:***@postgres:5432/nivo_dev` | Conexión a PostgreSQL        |
 | `REDIS_URL`           | `redis://redis:6379/0`                               | Conexión a Redis                   |
 | `JWT_SECRET_KEY`      | *(cambiar en producción)*                            | Firma de tokens JWT                |
 | `PQC_ALGORITHM`       | `ML-KEM-768`                                         | Algoritmo PQC NIST Level 3         |

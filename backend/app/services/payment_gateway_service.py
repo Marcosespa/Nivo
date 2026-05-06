@@ -191,7 +191,11 @@ class PaymentGatewayService:
                         },
                     )
                     if response.status_code != 201:
-                        logger.error("Wompi API error: %s — %s", response.status_code, response.text)
+                        logger.error(
+                            "Wompi API error: status=%s response_bytes=%s",
+                            response.status_code,
+                            len(response.content or b""),
+                        )
                         raise PaymentGatewayUnavailableError(
                             "No pudimos procesar tu solicitud. Intenta más tarde."
                         )
@@ -200,7 +204,12 @@ class PaymentGatewayService:
                     wompi_tx_id = data.get("data", {}).get("id")
                     payment_link = data.get("data", {}).get("payment_link_url")
                     if not wompi_tx_id or not payment_link:
-                        logger.error("Wompi response missing fields: %s", data)
+                        logger.error(
+                            "Wompi response missing expected fields: has_data=%s has_id=%s has_link=%s",
+                            bool(data.get("data")),
+                            bool(wompi_tx_id),
+                            bool(payment_link),
+                        )
                         raise PaymentGatewayUnavailableError("Respuesta inválida de pasarela")
 
                     transaction.provider_reference = wompi_tx_id
@@ -245,7 +254,11 @@ class PaymentGatewayService:
             wompi_tx_id = event_data.get("id") or reference
 
             if not reference or not wompi_status:
-                logger.error("Webhook payload missing required fields: %s", payload)
+                logger.error(
+                    "Webhook payload missing required fields: has_reference=%s has_status=%s",
+                    bool(reference),
+                    bool(wompi_status),
+                )
                 return
 
             span.set_attribute("nivo.wompi_status", wompi_status)

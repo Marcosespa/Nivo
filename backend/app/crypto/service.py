@@ -17,6 +17,7 @@ Algoritmos:
 import os
 import hashlib
 import hmac
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
@@ -27,6 +28,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from opentelemetry import trace
 
 _tracer = trace.get_tracer(__name__)
+logger = logging.getLogger(__name__)
 
 # Import condicional de liboqs
 # En producción, liboqs debe estar instalado.
@@ -358,7 +360,7 @@ class CryptoService:
             return True
 
         except Exception as e:
-            print(f"❌ PQC health check failed: {e}")
+            logger.error("PQC health check failed: %s", e)
             return False
 
     # ─── Utilidades privadas ──────────────────────────────────────────────────

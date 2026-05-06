@@ -23,30 +23,71 @@ El usuario es **co-fundador técnico de Nivo** con rol de ingeniero senior / tec
 
 ---
 
-## Dos sistemas de tracking — entenderlos antes de tocar cualquier tarea
+## Behavioral guidelines
 
-Nivo usa **dos sistemas de tracking distintos** con numeraciones diferentes. No mezclarlos:
+*Tradeoff:* These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-### Sistema A — TASKS.md (registro maestro oficial)
+### 1. Think Before Coding
+
+*Don't assume. Don't hide confusion. Surface tradeoffs.*
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them — don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Simplicity First
+
+*Minimum code that solves the problem. Nothing speculative.*
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### 3. Surgical Changes
+
+*Touch only what you must. Clean up only your own mess.*
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it — don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: every changed line should trace directly to the user's request.
+
+### 4. Goal-Driven Execution
+
+*Define success criteria. Loop until verified.*
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+## Sistema de tracking — TASKS.md
+
 `TASKS.md` en la raíz es el **registro de completación de todos los agentes**.  
 Formato: `FIX-001..009` (Sprint 0) y `TASK-001..035` (Sprint 1 en adelante).  
 Fuente de verdad permanente. **Actualizarlo siempre que se complete una tarea oficial.**
-
-### Sistema B — `felipe_tareas.txt` (lista personal de Felipe)
-`c:\Users\Sebastian\Downloads\felipe_tareas.txt` usa numeración propia `[T-01]..[T-13]`.  
-**Este archivo varía por conversación — NO es la fuente de verdad, no guardarlo en memoria.**  
-Cuando Felipe pasa tareas T-XX, mapearlas al TASK-XXX correspondiente en TASKS.md para actualizar el estado ahí.
-
-**Tabla de mapeo T-XX → TASK-XXX:**
-| T-XX (felipe_tareas.txt) | TASK-XXX (TASKS.md) | Estado | Scope |
-|---|---|---|---|
-| T-01 Webhook Wompi | TASK-007 | ✅ Done | Webhook + crédito atómico, 10 tests |
-| T-04 Alembic CI | TASK-019 | ✅ Done (parcial) | Solo el job migration-check; TASK-019 completa = CD pipeline |
-| T-05 OpenTelemetry | TASK-031 | ✅ Done (parcial) | OTel spans en rutas críticas; TASK-031 completa = Sentry + runbooks |
-| T-08 dev_otp gate | (sin entrada propia) | ✅ Done | Fix de seguridad puntual, 5 tests |
-| T-09 Canal alertas | TASK-031 | ✅ Done (parcial) | Slack AlertService; TASK-031 completa = GCP Monitoring |
-| T-10 Métricas KYC | (sin entrada propia — Sprint 3) | ✅ Done | `kyc_funnel_events`, funnel instrumentation, /kyc/funnel, alerta Slack |
-| T-13 Métricas negocio | TASK-030 (parcial) | ✅ Done | `business_metrics_daily` ORM + MetricsService + admin endpoints; Metabase/PostHog pendiente |
 
 ---
 
@@ -59,10 +100,8 @@ Cuando Felipe pasa tareas T-XX, mapearlas al TASK-XXX correspondiente en TASKS.m
 
 ### 2. Después de cada grupo de cambios importantes
 - Documentar los cambios en `tasks/sprint-X/done/TASK-XXX.md` (crear el archivo)
-  - Si la tarea viene de `felipe_tareas.txt`, nombrar el archivo `TASK-T-XX.md` en la carpeta del sprint correspondiente
 - Si hay problemas encontrados o decisiones técnicas no obvias, añadirlos a `tasks/sprint-X/problems/problems.md`
 - **Actualizar `TASKS.md`**: cambiar `[ ] PENDING` → `[x] DONE` para la TASK-XXX correspondiente
-  - Si una T-XX completa parcialmente una TASK-XXX, anotar qué parte quedó hecha en la descripción de la tarea en TASKS.md
 - Actualizar el README en `tasks/README.md` si cambia el progreso del sprint
 
 ### 3. Registro de problemas
@@ -71,9 +110,6 @@ Cada sprint tiene su carpeta `problems/problems.md`. Añadir ahí:
 - Decisiones técnicas con justificación
 - Comportamientos inesperados o edge cases descubiertos
 - Deuda técnica identificada
-
-### 4. Archivos NO relevantes por chat
-- `c:\Users\Sebastian\Downloads\felipe_tareas.txt` — varía por conversación, no guardar en memoria ni referenciar como fuente de verdad. Usar la tabla de mapeo de arriba para conectar T-XX con TASKS.md.
 
 ---
 
@@ -92,7 +128,7 @@ tasks/
 
 **Sprint 2 activo — estado:**
 - TASK-006: ⏳ Integración Truora KYC (kyc_service.py, endpoints /kyc/)
-- TASK-007: ✅ Integración Wompi PSE top-ups — done (T-01: webhook + crédito atómico, 10 tests)
+- TASK-007: ✅ Integración Wompi PSE top-ups — done (webhook + crédito atómico, 10 tests)
 - TASK-008: ⏳ Retiros ACH (/withdrawal/)
 
 > Nota: el backend ya tiene implementaciones parciales de KYC y top-up que pueden estar adelantadas respecto al spec — verificar el código real antes de tratar como sin hacer.

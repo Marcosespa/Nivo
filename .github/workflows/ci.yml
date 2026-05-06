@@ -5,7 +5,7 @@
 #   migration-check — alembic upgrade → check → downgrade → upgrade (no liboqs)
 #   test            — full pytest suite against SQLite + FakeRedis (needs liboqs)
 #
-# Trigger: push / PR to main when backend/** changes.
+# Trigger: push / PR to main/develop when backend or landing changes.
 #
 # Branch protection (configure manually in GitHub → Settings → Branches):
 #   Require status checks: lint, migration-check, test
@@ -18,14 +18,16 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - "backend/**"
+      - "landing_page/nivo/**"
       - ".github/workflows/ci.yml"
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - "backend/**"
+      - "landing_page/nivo/**"
       - ".github/workflows/ci.yml"
 
 # Cancel redundant runs on the same branch/PR
@@ -167,3 +169,20 @@ jobs:
       # ── Tests ───────────────────────────────────────────────────────────────
       - name: Run tests
         run: pytest -x -q --tb=short --cov=app --cov-report=term-missing
+
+  # ─── Landing build ─────────────────────────────────────────────────────────
+  landing-build:
+    name: Landing build
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: landing_page/nivo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: landing_page/nivo/package-lock.json
+      - run: npm ci
+      - run: npm run build

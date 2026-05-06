@@ -13,7 +13,7 @@ ENV VITE_ENVIRONMENT=$VITE_ENVIRONMENT
 
 # Install dependencies first (better layer caching)
 COPY package.json package-lock.json* ./
-RUN npm ci --frozen-lockfile
+RUN npm ci
 
 # Copy source files
 COPY . .

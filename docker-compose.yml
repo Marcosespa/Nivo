@@ -11,7 +11,7 @@
 #   • backend    → http://localhost:8001   (FastAPI + PQC)
 #   • postgres   → localhost:5432          (PostgreSQL 16)
 #   • redis      → localhost:6379          (Redis 7)
-#   • pgadmin    → http://localhost:5050   (Panel DB — admin@nivo.co / nivo_admin)
+#   • pgadmin    → http://localhost:5050   (Panel DB — configurar PGADMIN_* en .env)
 #
 # Para bajar todo:
 #   docker compose down
@@ -58,6 +58,7 @@ services:
       - ./backend/.env.docker.example
     environment:
       PYTHONUNBUFFERED: "1"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?Set POSTGRES_USER}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB}
       ALLOWED_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000","http://localhost:8001","http://127.0.0.1:8001"]'
     ports:
       - "8001:8000"
@@ -86,9 +87,9 @@ services:
     container_name: nivo-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: Nivo
-      POSTGRES_PASSWORD: Nivo
-      POSTGRES_DB: Nivo_dev
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -97,7 +98,7 @@ services:
     networks:
       - nivo-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U Nivo -d Nivo_dev"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?Set POSTGRES_USER} -d ${POSTGRES_DB:?Set POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -128,8 +129,8 @@ services:
     container_name: nivo-pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@nivo.co
-      PGADMIN_DEFAULT_PASSWORD: nivo_admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Set PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Set PGADMIN_DEFAULT_PASSWORD}
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     ports:

@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     # ─── Base de datos ────────────────────────────────────────────────────────
-    DATABASE_URL: str = "postgresql+asyncpg://Nivo:Nivo@localhost:5432/Nivo_dev"
+    DATABASE_URL: str = "postgresql+asyncpg://nivo_user:change_me@localhost:5432/nivo_dev"
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
 
