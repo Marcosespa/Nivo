@@ -145,9 +145,41 @@ async def initiate_topup(
     "/webhook",
     status_code=status.HTTP_200_OK,
     summary="Webhook de Wompi",
-    description="Endpoint para que Wompi reporte el resultado del pago. "
-    "NO requiere JWT. Siempre retorna 200.",
-    include_in_schema=False,
+    description=(
+        "Callback de Wompi para reportar estados de recargas PSE. "
+        "No usa JWT; valida `X-Event-Checksum` o `signature.checksum` con "
+        "`WOMPI_EVENTS_SECRET`. El procesamiento es idempotente: un evento APPROVED "
+        "acredita la wallet una sola vez."
+    ),
+    openapi_extra={
+        "parameters": [
+            {
+                "name": "X-Event-Checksum",
+                "in": "header",
+                "required": False,
+                "schema": {"type": "string"},
+                "description": "Checksum HMAC/SHA-256 del evento Wompi.",
+            }
+        ],
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "event": "transaction.updated",
+                        "timestamp": "1713900000",
+                        "data": {
+                            "id": "WOMPI-TX-ID",
+                            "reference": "NIVO-REFERENCE",
+                            "status": "APPROVED",
+                            "amount_in_cents": 10000000,
+                            "currency": "COP",
+                        },
+                        "signature": {"checksum": "hex-checksum"},
+                    }
+                }
+            }
+        },
+    },
 )
 async def wompi_webhook(
     request: Request,

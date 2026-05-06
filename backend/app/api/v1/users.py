@@ -34,7 +34,16 @@ class WalletResponse(BaseModel):
     provider_account_ref: str | None = None
 
 
-@router.get("/me", response_model=UserProfileResponse)
+@router.get(
+    "/me",
+    response_model=UserProfileResponse,
+    summary="Obtener perfil del usuario autenticado",
+    description=(
+        "Retorna los datos básicos del usuario autenticado por JWT: identificador, "
+        "teléfono, plan, estado KYC y fingerprint truncado de la llave PQC activa. "
+        "No retorna llaves privadas ni material criptográfico sensible."
+    ),
+)
 async def get_profile(
     current_user: Annotated[UserORM, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -57,7 +66,16 @@ async def get_profile(
     )
 
 
-@router.get("/me/wallet", response_model=WalletResponse)
+@router.get(
+    "/me/wallet",
+    response_model=WalletResponse,
+    summary="Obtener billetera del usuario autenticado",
+    description=(
+        "Retorna el saldo visual, moneda, estado de congelamiento y modo de custodia "
+        "de la billetera del usuario autenticado. Si la billetera todavía no existe, "
+        "se crea una billetera inicial idempotente."
+    ),
+)
 async def get_wallet(
     current_user: Annotated[UserORM, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],

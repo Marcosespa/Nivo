@@ -131,6 +131,11 @@ verify_api_key = verify_b2b_api_key
 @router.get(
     "/algorithms",
     summary="Algoritmos PQC soportados",
+    description=(
+        "Lista los algoritmos post-cuánticos disponibles para clientes B2B, "
+        "incluyendo tamaños de llaves, tamaños de ciphertext/firma y nivel de seguridad NIST. "
+        "Requiere header `X-Nivo-Key`."
+    ),
 )
 async def list_algorithms(
     _: Annotated[str, Depends(verify_api_key)],
@@ -240,6 +245,11 @@ async def sign_data(
     "/verify",
     response_model=VerifyResponse,
     summary="Verificar firma ML-DSA-65",
+    description=(
+        "Verifica que `signature_hex` sea una firma ML-DSA-65 válida para `data_hex` "
+        "con la llave pública `public_key_hex`. Todos los campos deben estar codificados en hex. "
+        "Requiere header `X-Nivo-Key`."
+    ),
 )
 async def verify_signature(
     request: VerifyRequest,

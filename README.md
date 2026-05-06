@@ -148,6 +148,9 @@ FastAPI genera OpenAPI automáticamente:
 - ReDoc: `/redoc`
 - OpenAPI JSON: `/openapi.json`
 
+Swagger ahora incluye tambien webhooks, probes y aliases internos para que la
+documentacion operativa viva en una sola fuente.
+
 Routers principales:
 
 | Prefijo | Descripción |

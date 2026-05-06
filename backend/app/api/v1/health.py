@@ -18,7 +18,16 @@ router = APIRouter()
 crypto = CryptoService()
 
 
-@router.get("", status_code=status.HTTP_200_OK, include_in_schema=False)
+@router.get(
+    "",
+    status_code=status.HTTP_200_OK,
+    summary="Estado general del servicio",
+    description=(
+        "Health check liviano para verificar que la API responde. "
+        "No valida dependencias profundas; para criptografía post-cuántica usar `/health/pqc` "
+        "y para orquestadores usar `/health/ready` y `/health/live`."
+    ),
+)
 async def health():
     """Health check básico."""
     return {
@@ -68,13 +77,27 @@ async def health_pqc():
     }
 
 
-@router.get("/ready", include_in_schema=False)
+@router.get(
+    "/ready",
+    summary="Readiness probe",
+    description=(
+        "Probe para orquestadores como Cloud Run o Kubernetes. Debe responder 200 "
+        "cuando la instancia está lista para recibir tráfico."
+    ),
+)
 async def readiness():
     """Readiness probe para Cloud Run."""
     return {"ready": True}
 
 
-@router.get("/live", include_in_schema=False)
+@router.get(
+    "/live",
+    summary="Liveness probe",
+    description=(
+        "Probe para orquestadores. Debe responder 200 mientras el proceso de la API "
+        "sigue vivo y no necesita reinicio."
+    ),
+)
 async def liveness():
     """Liveness probe para Cloud Run."""
     return {"alive": True}

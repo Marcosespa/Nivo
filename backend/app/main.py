@@ -37,6 +37,101 @@ from app.crypto.service import CryptoService
 
 logger = logging.getLogger(__name__)
 
+OPENAPI_DESCRIPTION = """
+API de la primera billetera digital quantum-safe de Colombia.
+
+## Como usar esta documentacion
+
+- Local directo: `http://localhost:8000/docs`
+- Docker Compose: `http://localhost:8001/docs`
+- OpenAPI JSON: `/openapi.json`
+- En `ENVIRONMENT=production`, Swagger y ReDoc se desactivan.
+
+## Autenticacion
+
+| Tipo | Header | Usado por |
+| --- | --- | --- |
+| Usuario JWT | `Authorization: Bearer <access_token>` | Usuarios, pagos, KYC, top-ups y retiros. |
+| API key B2B | `X-Nivo-Key: <api_key>` | Endpoints `/api/v1/crypto/*`. |
+| Webhook proveedor | `X-Event-Checksum` o `X-Truora-Signature` | Wompi y Truora. |
+
+## Modulos principales
+
+| Tag | Descripcion |
+| --- | --- |
+| Health | Estado del servicio, PQC, readiness y liveness. |
+| Autenticacion | Solicitud/verificacion OTP, refresh y logout. |
+| Usuarios | Perfil y wallet del usuario autenticado. |
+| Pagos | Pagos P2P, confirmacion OTP, historial y consulta. |
+| KYC | Inicio KYC, estado, funnel y webhook Truora. |
+| Top-ups | Inicio de recarga, historial y webhook Wompi. |
+| Retiros | Cuentas bancarias, micro-deposito y retiros. |
+| PQC API B2B | Firma/verificacion post-cuantica para clientes B2B. |
+| Dev/Admin | Herramientas disponibles solo en `development`/`staging`. |
+
+## Endpoints internos ahora visibles
+
+Los webhooks, probes y aliases legacy tambien aparecen en Swagger para que el
+equipo pueda probarlos y entenderlos desde una sola fuente. En produccion se
+deben proteger por red, firma HMAC, allowlists o controles del proveedor.
+
+## Codigos de error comunes
+
+| Codigo | Significado |
+| --- | --- |
+| `400` | Request invalido, UUID mal formado o payload no parseable. |
+| `401` | Token JWT/API key invalida u OTP incorrecto. |
+| `402` | Saldo insuficiente. |
+| `403` | Wallet congelada, usuario inactivo o endpoint dev bloqueado. |
+| `404` | Recurso no encontrado. |
+| `422` | Limites, monto invalido o modo custodia no ejecutable. |
+| `429` | Rate limit excedido. |
+| `503` | Dependencia externa o modulo PQC no disponible. |
+"""
+
+OPENAPI_TAGS = [
+    {
+        "name": "Health",
+        "description": "Estado operativo del servicio, readiness/liveness y verificación del módulo PQC.",
+    },
+    {
+        "name": "Autenticación",
+        "description": "Flujo OTP, emisión/renovación de tokens JWT y cierre de sesión.",
+    },
+    {
+        "name": "Usuarios",
+        "description": "Perfil, billetera visual y datos del usuario autenticado.",
+    },
+    {
+        "name": "Pagos",
+        "description": "Pagos P2P, confirmación por OTP, historial y consulta de transacciones.",
+    },
+    {
+        "name": "KYC",
+        "description": "Verificación de identidad, estado KYC y métricas de funnel.",
+    },
+    {
+        "name": "Top-ups",
+        "description": "Recargas PSE/Wompi, historial y conciliación por webhook.",
+    },
+    {
+        "name": "Retiros",
+        "description": "Cuentas bancarias, micro-depósitos y retiros ACH/banco aliado.",
+    },
+    {
+        "name": "PQC API B2B",
+        "description": "Firma/verificación post-cuántica expuesta para clientes B2B con `X-Nivo-Key`.",
+    },
+    {
+        "name": "⚠️ Dev Only",
+        "description": "Herramientas disponibles solo fuera de producción.",
+    },
+    {
+        "name": "⚠️ Admin",
+        "description": "Operaciones administrativas de métricas y alertas para entornos controlados.",
+    },
+]
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -73,14 +168,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Nivo API",
-    description=(
-        "API de la primera billetera digital quantum-safe de Colombia. "
-        "Cifrado ML-KEM-768 + X25519 híbrido, firmas ML-DSA-65 en cada transacción."
-    ),
+    description=OPENAPI_DESCRIPTION,
     version="0.1.0",
     docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
     redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
     lifespan=lifespan,
+    openapi_tags=OPENAPI_TAGS,
+    servers=[
+        {"url": "http://localhost:8000", "description": "Backend local directo"},
+        {"url": "http://localhost:8001", "description": "Backend via Docker Compose"},
+    ],
 )
 
 # FastAPI auto-instrumentation — uses global TracerProvider set during lifespan
@@ -147,7 +244,15 @@ if settings.ENVIRONMENT in {"development", "staging"}:
     )
 
 
-@app.get("/", include_in_schema=False)
+@app.get(
+    "/",
+    summary="Metadata pública del servicio",
+    description=(
+        "Retorna metadata básica de la API: nombre del servicio, versión, estado "
+        "operativo y configuración PQC pública. No requiere autenticación."
+    ),
+    tags=["Health"],
+)
 async def root():
     return {
         "service": "Nivo API",

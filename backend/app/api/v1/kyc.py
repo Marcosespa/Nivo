@@ -104,9 +104,33 @@ async def initiate_kyc(
     "/webhook",
     status_code=status.HTTP_200_OK,
     summary="Webhook de Truora",
-    description="Endpoint para que Truora reporte el resultado de la verificación. "
-    "NO requiere JWT. Siempre retorna 200 (incluso si la firma falla).",
-    include_in_schema=False,  # No mostrar en OpenAPI (endpoint backend)
+    description=(
+        "Callback de Truora para reportar el resultado de una verificación KYC. "
+        "No usa JWT; valida `X-Truora-Signature` con HMAC-SHA256. "
+        "Siempre responde 200 para no revelar estado interno al proveedor o a terceros."
+    ),
+    openapi_extra={
+        "parameters": [
+            {
+                "name": "X-Truora-Signature",
+                "in": "header",
+                "required": False,
+                "schema": {"type": "string"},
+                "description": "Firma HMAC-SHA256 enviada por Truora.",
+            }
+        ],
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "check_id": "truora-check-id",
+                        "status": "approved",
+                        "user_id": "optional-provider-user-id",
+                    }
+                }
+            }
+        },
+    },
 )
 async def truora_webhook(
     request: Request,

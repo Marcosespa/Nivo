@@ -19,6 +19,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import Query
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
@@ -231,7 +232,12 @@ async def initiate_payment(
     "/execute",
     response_model=PaymentConfirmResponse,
     status_code=status.HTTP_200_OK,
-    include_in_schema=False,
+    summary="Ejecutar pago con OTP (alias legacy)",
+    description=(
+        "Alias retrocompatible de `/api/v1/payments/confirm`. Se mantiene para clientes "
+        "antiguos que todavía llaman `/execute`; nuevos clientes deben usar `/confirm`."
+    ),
+    deprecated=True,
 )
 @router.post(
     "/confirm",
@@ -307,13 +313,18 @@ async def confirm_payment(
     "/history",
     response_model=PaymentHistoryResponse,
     summary="Historial de movimientos",
+    description=(
+        "Retorna el historial paginado de transacciones del usuario autenticado. "
+        "Permite filtrar por dirección (`sent`, `received` o `all`) e incluye "
+        "estado de liquidación, rail usado y fingerprint de firma cuando aplica."
+    ),
 )
 async def get_payment_history(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    page: int = 1,
-    page_size: int = 20,
-    direction: str = "all",   # "sent", "received", "all"
+    page: int = Query(default=1, ge=1, description="Número de página, empezando en 1"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Cantidad máxima de movimientos por página"),
+    direction: str = Query(default="all", pattern="^(sent|received|all)$", description="Filtro de dirección"),
 ):
     """
     Retorna el historial paginado de transacciones del usuario.
@@ -363,6 +374,11 @@ async def get_payment_history(
     "/{tx_id}",
     response_model=TransactionDetail,
     summary="Consultar transacción",
+    description=(
+        "Consulta una transacción específica por UUID. Solo retorna transacciones donde "
+        "el usuario autenticado es sender o receiver. Incluye teléfonos de las partes, "
+        "estado, rail, referencia del proveedor y metadata de firma PQC."
+    ),
 )
 async def get_transaction(
     tx_id: str,

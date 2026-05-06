@@ -25,7 +25,7 @@ El sistema ya estaba funcionalmente verificado. Esta pasada se enfocó en estabi
 ### Documentación
 
 - `README.md` fue reescrito con estructura actual del monorepo, instalación, variables, ejecución local, Docker, pruebas, API y troubleshooting.
-- Se documentaron endpoints principales expuestos por FastAPI y dónde consultar Swagger/OpenAPI.
+- Se documentaron endpoints principales expuestos por FastAPI y se hicieron visibles en Swagger los webhooks/probes/aliases internos.
 - Se agregó esta guía de readiness con checklist y roadmap v2.
 - Se validó también la consola web (`frontend/`) con build de TypeScript/Vite.
 
@@ -42,7 +42,7 @@ El sistema ya estaba funcionalmente verificado. Esta pasada se enfocó en estabi
 | --- | --- | --- |
 | Instalación local | Actualizada | README cubre backend, landing, frontend y Docker. |
 | Variables de entorno | Actualizada | Ejemplos sin secretos reales. Producción debe usar secret manager. |
-| API/OpenAPI | Disponible | `/docs`, `/redoc`, `/openapi.json` en development/staging. |
+| API/OpenAPI | Disponible | `/docs`, `/redoc`, `/openapi.json` en development/staging, incluyendo webhooks/probes/aliases internos. |
 | Troubleshooting | Actualizado | README cubre fallos vistos en tests: OTel, liboqs, Wompi, dev OTP, CORS. |
 | Backups/DR | Existente | Ver `docs/08-postgresql-backup-dr.md`. |
 | Gestión de llaves | Existente | Ver `docs/ADR-003-hsm-key-management.md`; aún pendiente implementación HSM/KMS real. |

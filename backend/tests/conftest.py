@@ -80,6 +80,28 @@ def anyio_backend():
     return "asyncio"
 
 
+@pytest.fixture(autouse=True)
+def isolate_test_settings():
+    """Keep tests deterministic even when backend/.env has local dev flags."""
+    original_wompi_mock_mode = settings.WOMPI_MOCK_MODE
+    original_gateway_mock_mode = None
+    settings.WOMPI_MOCK_MODE = False
+
+    try:
+        from app.api.v1.topup import gateway_service
+
+        original_gateway_mock_mode = gateway_service.mock_mode
+        gateway_service.mock_mode = False
+    except Exception:
+        gateway_service = None
+
+    yield
+
+    settings.WOMPI_MOCK_MODE = original_wompi_mock_mode
+    if original_gateway_mock_mode is not None and gateway_service is not None:
+        gateway_service.mock_mode = original_gateway_mock_mode
+
+
 @pytest_asyncio.fixture
 async def db_session() -> AsyncIterator[AsyncSession]:
     db_path = Path("/tmp") / f"nivo_test_{uuid.uuid4().hex}.sqlite3"
