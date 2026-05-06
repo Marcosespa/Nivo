@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nivo | Tu dinero, blindado contra el futuro</title>
+    <meta
+      name="description"
+      content="Billetera digital colombiana con criptografía post-cuántica (NIST FIPS 203). Protege hoy identidad y comprobantes frente a amenazas que madurarán con la computación cuántica."
+    />
+    <meta name="theme-color" content="#FFFFFF" />
+    <script>
+      (() => {
+        const storageKey = 'nivo-theme-preference';
+        const stored = window.localStorage.getItem(storageKey);
+        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light';
+        const resolved =
+          stored === 'light' || stored === 'dark'
+            ? stored
+            : systemTheme;
+
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.style.colorScheme = resolved;
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+          meta.setAttribute('content', resolved === 'dark' ? '#0B0E0D' : '#FFFFFF');
+        }
+      })();
+    </script>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <meta property="og:title" content="Nivo | Tu dinero, blindado contra el futuro" />
+    <meta
+      property="og:description"
+      content="Billetera digital colombiana con criptografía post-cuántica (NIST). Pagos, monedas e inversión con recibos verificables."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/og-image.svg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Nivo | Tu dinero, blindado contra el futuro" />
+    <meta
+      name="twitter:description"
+      content="Criptografía post-cuántica integrada. Cuenta simple para pagar, cambiar monedas e invertir con claridad."
+    />
+    <meta name="twitter:image" content="/og-image.svg" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

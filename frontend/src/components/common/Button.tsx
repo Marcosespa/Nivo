@@ -1,4 +1,4 @@
-import { type ButtonHTMLAttributes } from 'react'
+import { type ButtonHTMLAttributes, type ReactNode } from 'react'
 import clsx from 'clsx'
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost'
@@ -9,16 +9,16 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size
   loading?: boolean
   fullWidth?: boolean
-  children: React.ReactNode
+  children: ReactNode
 }
 
 const variantClasses: Record<Variant, string> = {
   primary: [
-    'bg-gradient-to-r from-indigo-600 to-indigo-500',
-    'hover:from-indigo-500 hover:to-indigo-400',
-    'text-white font-semibold',
-    'shadow-lg shadow-indigo-500/25',
-    'disabled:from-indigo-800 disabled:to-indigo-700 disabled:shadow-none',
+    'bg-gradient-to-r from-teal-500 to-emerald-500',
+    'hover:from-teal-400 hover:to-emerald-400',
+    'text-gray-950 font-semibold',
+    'shadow-lg shadow-teal-500/20',
+    'disabled:from-teal-900 disabled:to-emerald-900 disabled:shadow-none disabled:text-white',
   ].join(' '),
   secondary: [
     'bg-gray-800 hover:bg-gray-700',

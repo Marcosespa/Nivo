@@ -1,61 +1,43 @@
 # Docker Helper — Nivo
 
-Archivos Docker Compose para desarrollo local.
+Colección de composes para levantar el proyecto por partes o completo.
 
-## Archivos disponibles
+## Archivos principales
 
-| Archivo | Propósito |
+| Archivo | Qué levanta |
 |---|---|
-| `docker-compose.postgres.yml` | Solo bases de datos: PostgreSQL 16 + Redis 7 + pgAdmin |
-| `docker-compose.full.yml` | Stack completo: API + PostgreSQL + Redis |
+| `docker-compose.full.yml` | Frontend + Backend + PostgreSQL + Redis + pgAdmin |
+| `docker-compose.frontend.yml` | Solo frontend React servido con Nginx |
+| `docker-compose.backend.yml` | Backend FastAPI + PostgreSQL + Redis + pgAdmin |
+| `docker-compose.databases.yml` | PostgreSQL + Redis + pgAdmin |
+| `docker-compose.microservices.yml` | Servicios auxiliares y futuros workers |
+| `docker-compose.postgres.yml` | Alias legacy del stack de bases de datos |
 
----
-
-## Solo bases de datos (recomendado para dev activo)
-
-```bash
-# Levantar
-docker compose -f docker_helper/docker-compose.postgres.yml up -d
-
-# Ver estado
-docker compose -f docker_helper/docker-compose.postgres.yml ps
-
-# Ver logs
-docker compose -f docker_helper/docker-compose.postgres.yml logs -f
-
-# Apagar (conserva datos)
-docker compose -f docker_helper/docker-compose.postgres.yml down
-
-# Apagar y eliminar datos
-docker compose -f docker_helper/docker-compose.postgres.yml down -v
-```
-
-**Servicios:**
-- PostgreSQL: `localhost:5432` (Nivo/Nivo/Nivo_dev)
-- Redis: `localhost:6379`
-- pgAdmin: `http://localhost:5050` (admin@nivo.co / nivo_admin)
-
----
-
-## Stack completo con la API
+## Uso rapido
 
 ```bash
-# Construir y levantar
+# Todo el stack
 docker compose -f docker_helper/docker-compose.full.yml up --build
 
-# Solo levantar (si ya construiste antes)
-docker compose -f docker_helper/docker-compose.full.yml up
+# Solo frontend
+docker compose -f docker_helper/docker-compose.frontend.yml up --build
 
-# Apagar
-docker compose -f docker_helper/docker-compose.full.yml down
+# Solo backend con DBs
+docker compose -f docker_helper/docker-compose.backend.yml up --build
+
+# Solo bases de datos
+docker compose -f docker_helper/docker-compose.databases.yml up -d
+
+# Microservicios auxiliares
+docker compose -f docker_helper/docker-compose.microservices.yml up -d
 ```
 
-**Servicios:**
-- API: `http://localhost:8000`
-- Swagger UI: `http://localhost:8000/docs`
-- PostgreSQL: `localhost:5432`
-- Redis: `localhost:6379`
+## Documentacion por stack
 
----
+- [Resumen general](./docs/overview.md)
+- [Frontend](./docs/frontend.md)
+- [Backend](./docs/backend.md)
+- [Bases de datos](./docs/databases.md)
+- [Microservicios](./docs/microservices.md)
 
-Ver `RUNNING.md` en la raíz del proyecto para la guía completa paso a paso.
+Ver tambien [POSTMAN_DOCKER_TUTORIAL.md](/Users/marcosespana/Desktop/Nivo/POSTMAN_DOCKER_TUTORIAL.md) y [RUNNING.md](/Users/marcosespana/Desktop/Nivo/RUNNING.md).

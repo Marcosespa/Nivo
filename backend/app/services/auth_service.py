@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.crypto.service import CryptoService
 from app.models.orm.user import User as UserORM, UserPlanEnum, KYCStatusEnum
 from app.models.orm.pqc_key import PQCKey as PQCKeyORM
@@ -101,11 +102,15 @@ class AuthService:
         db.add(pqc_key)
         await db.flush()
 
-        # En desarrollo: loggear la llave privada (NUNCA en producción)
+        # En desarrollo: loggear solo un prefijo truncado de la llave privada (NUNCA en producción).
+        # Gate doble: settings.DEBUG y entorno development para reducir riesgo de leak por
+        # misconfiguración.
         import logging
         logger = logging.getLogger(__name__)
-        if False:  # TODO: cambiar a settings.DEBUG y refactorizar para evitar logs
-            logger.debug(f"[DEV] Private key for {user_id}: {signing_kp.secret_key.hex()[:64]}...")
+        if settings.DEBUG and settings.ENVIRONMENT == "development":
+            logger.debug(
+                f"[DEV] Private key prefix for {user_id}: {signing_kp.secret_key.hex()[:16]}..."
+            )
 
         return pqc_key
 

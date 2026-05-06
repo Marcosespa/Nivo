@@ -1,159 +1,242 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Send, TrendingUp, TrendingDown, Wallet as WalletIcon, RefreshCw } from 'lucide-react'
 import Layout from '../components/layout/Layout'
-import WalletCard from '../components/wallet/WalletCard'
-import TransactionList from '../components/wallet/TransactionList'
-import Modal from '../components/common/Modal'
-import SendPayment from '../components/payments/SendPayment'
-import Card from '../components/common/Card'
-import { useWallet } from '../hooks/useWallet'
-
-function formatCOP(amount: number): string {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
+import Button from '../components/common/Button'
+import Input from '../components/common/Input'
+import EndpointCard from '../components/console/EndpointCard'
+import JsonPanel from '../components/console/JsonPanel'
+import RequestLogPanel from '../components/console/RequestLogPanel'
+import SessionSummaryCard from '../components/console/SessionSummaryCard'
+import { useApiAction } from '../hooks/useApiAction'
+import { healthService } from '../services/health.service'
+import { usersService } from '../services/users.service'
+import { devService } from '../services/dev.service'
 
 export default function DashboardPage() {
-  const { wallet, transactions, loading, error, refetch } = useWallet()
-  const [sendModalOpen, setSendModalOpen] = useState(false)
-  const navigate = useNavigate()
+  const { execute } = useApiAction()
+  const [loading, setLoading] = useState<string | null>(null)
+  const [senderPhone, setSenderPhone] = useState('+573001234567')
+  const [receiverPhone, setReceiverPhone] = useState('+573009876543')
+  const [seedBalance, setSeedBalance] = useState('50000000')
 
-  // Calculate monthly stats
-  const now = new Date()
-  const monthTx = transactions.filter((tx) => {
-    const d = new Date(tx.created_at)
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-  })
-  const monthlyReceived = monthTx
-    .filter((tx) => tx.type === 'credit' && tx.status === 'completed')
-    .reduce((sum, tx) => sum + tx.amount, 0)
-  const monthlySpent = monthTx
-    .filter((tx) => tx.type === 'debit' && tx.status === 'completed')
-    .reduce((sum, tx) => sum + tx.amount, 0)
-
-  const stats = [
-    {
-      label: 'Saldo total',
-      value: wallet ? formatCOP(wallet.balance) : '—',
-      icon: WalletIcon,
-      color: 'text-indigo-400',
-      bg: 'bg-indigo-500/10',
-    },
-    {
-      label: 'Recibido este mes',
-      value: formatCOP(monthlyReceived),
-      icon: TrendingUp,
-      color: 'text-emerald-400',
-      bg: 'bg-emerald-500/10',
-    },
-    {
-      label: 'Gastado este mes',
-      value: formatCOP(monthlySpent),
-      icon: TrendingDown,
-      color: 'text-red-400',
-      bg: 'bg-red-500/10',
-    },
-  ]
+  const run = async (key: string, job: () => Promise<unknown>) => {
+    setLoading(key)
+    try {
+      await job()
+    } finally {
+      setLoading(null)
+    }
+  }
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Error state */}
-        {error && !loading && (
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
-            <p className="text-sm text-red-400">{error}</p>
-            <button
-              onClick={refetch}
-              className="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300"
+      <div className="grid gap-6 xl:grid-cols-[1.45fr_0.55fr]">
+        <div className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <EndpointCard
+              title="Health checks"
+              endpoint="GET /health*"
+              description="Valida disponibilidad del backend y del modulo PQC."
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Reintentar
-            </button>
-          </div>
-        )}
-
-        {/* Wallet card skeleton */}
-        {loading ? (
-          <div className="h-52 rounded-2xl bg-gray-800/50 animate-pulse" />
-        ) : wallet ? (
-          <WalletCard
-            wallet={wallet}
-            onTopUp={() => navigate('/wallet')}
-            onWithdraw={() => navigate('/wallet')}
-          />
-        ) : null}
-
-        {/* Stats row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {stats.map(({ label, value, icon: Icon, color, bg }) => (
-            <Card key={label} className="!p-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
-                  <Icon className={`w-5 h-5 ${color}`} />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">{label}</p>
-                  <p className="text-base font-bold text-white mt-0.5">{value}</p>
-                </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Button
+                  loading={loading === 'health'}
+                  onClick={() =>
+                    run('health', () =>
+                      execute({
+                        label: 'Health general',
+                        method: 'GET',
+                        path: '/health',
+                        request: () => healthService.health(),
+                      })
+                    )
+                  }
+                >
+                  GET /health
+                </Button>
+                <Button
+                  variant="secondary"
+                  loading={loading === 'pqc'}
+                  onClick={() =>
+                    run('pqc', () =>
+                      execute({
+                        label: 'Health PQC',
+                        method: 'GET',
+                        path: '/health/pqc',
+                        request: () => healthService.pqc(),
+                      })
+                    )
+                  }
+                >
+                  GET /health/pqc
+                </Button>
+                <Button
+                  variant="secondary"
+                  loading={loading === 'ready'}
+                  onClick={() =>
+                    run('ready', () =>
+                      execute({
+                        label: 'Readiness',
+                        method: 'GET',
+                        path: '/health/ready',
+                        request: () => healthService.ready(),
+                      })
+                    )
+                  }
+                >
+                  GET /health/ready
+                </Button>
+                <Button
+                  variant="secondary"
+                  loading={loading === 'live'}
+                  onClick={() =>
+                    run('live', () =>
+                      execute({
+                        label: 'Liveness',
+                        method: 'GET',
+                        path: '/health/live',
+                        request: () => healthService.live(),
+                      })
+                    )
+                  }
+                >
+                  GET /health/live
+                </Button>
+                <Button
+                  variant="secondary"
+                  loading={loading === 'root'}
+                  onClick={() =>
+                    run('root', () =>
+                      execute({
+                        label: 'Root endpoint',
+                        method: 'GET',
+                        path: '/',
+                        request: () => healthService.root(),
+                      })
+                    )
+                  }
+                >
+                  GET /
+                </Button>
               </div>
-            </Card>
-          ))}
-        </div>
+            </EndpointCard>
 
-        {/* Recent transactions + quick send */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Transactions */}
-          <Card className="lg:col-span-2 !p-0 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-              <h2 className="text-sm font-semibold text-white">Movimientos recientes</h2>
-              <button
-                onClick={() => navigate('/wallet')}
-                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
-              >
-                Ver todos
-              </button>
-            </div>
-            <div className="px-2 py-2">
-              <TransactionList
-                transactions={transactions}
-                loading={loading}
-                limit={5}
-                emptyMessage="Sin movimientos aún"
+            <EndpointCard
+              title="Sesion actual"
+              endpoint="GET /api/v1/users/*"
+              description="Consulta el perfil autenticado y el estado visual de la wallet."
+            >
+              <div className="grid gap-3 md:grid-cols-2">
+                <Button
+                  loading={loading === 'me'}
+                  onClick={() =>
+                    run('me', () =>
+                      execute({
+                        label: 'Perfil actual',
+                        method: 'GET',
+                        path: '/api/v1/users/me',
+                        request: () => usersService.me(),
+                      })
+                    )
+                  }
+                >
+                  GET /users/me
+                </Button>
+                <Button
+                  variant="secondary"
+                  loading={loading === 'wallet'}
+                  onClick={() =>
+                    run('wallet', () =>
+                      execute({
+                        label: 'Wallet actual',
+                        method: 'GET',
+                        path: '/api/v1/users/me/wallet',
+                        request: () => usersService.wallet(),
+                      })
+                    )
+                  }
+                >
+                  GET /users/me/wallet
+                </Button>
+              </div>
+            </EndpointCard>
+          </div>
+
+          <EndpointCard
+            title="Dev seed"
+            endpoint="POST/DELETE /api/v1/dev/seed"
+            description="Reinicia sender y receiver de prueba sin salir del frontend."
+          >
+            <div className="grid gap-4 md:grid-cols-3">
+              <Input
+                label="Sender phone"
+                value={senderPhone}
+                onChange={(event) => setSenderPhone(event.target.value)}
+              />
+              <Input
+                label="Receiver phone"
+                value={receiverPhone}
+                onChange={(event) => setReceiverPhone(event.target.value)}
+              />
+              <Input
+                label="Seed balance COP"
+                type="number"
+                value={seedBalance}
+                onChange={(event) => setSeedBalance(event.target.value)}
               />
             </div>
-          </Card>
-
-          {/* Quick send */}
-          <Card>
-            <div className="flex items-center gap-2 mb-5">
-              <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center">
-                <Send className="w-4 h-4 text-indigo-400" />
-              </div>
-              <h2 className="text-sm font-semibold text-white">Envío rápido</h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Button
+                loading={loading === 'seed'}
+                onClick={() =>
+                  run('seed', () =>
+                    execute({
+                      label: 'Seed regenerado',
+                      method: 'POST',
+                      path: '/api/v1/dev/seed',
+                      request: () =>
+                        devService.seed({
+                          sender_phone: senderPhone,
+                          receiver_phone: receiverPhone,
+                          seed_balance_cop: Number(seedBalance),
+                        }),
+                    })
+                  )
+                }
+              >
+                POST /dev/seed
+              </Button>
+              <Button
+                variant="danger"
+                loading={loading === 'seed-clear'}
+                onClick={() =>
+                  run('seed-clear', () =>
+                    execute({
+                      label: 'Seed limpiado',
+                      method: 'DELETE',
+                      path: '/api/v1/dev/seed',
+                      request: () =>
+                        devService.clearSeed({
+                          sender_phone: senderPhone,
+                          receiver_phone: receiverPhone,
+                          seed_balance_cop: Number(seedBalance),
+                        }),
+                    })
+                  )
+                }
+              >
+                DELETE /dev/seed
+              </Button>
             </div>
-            <SendPayment onSuccess={() => { setSendModalOpen(false); refetch() }} />
-          </Card>
+          </EndpointCard>
+
+          <JsonPanel />
+          <RequestLogPanel />
+        </div>
+
+        <div className="space-y-6">
+          <SessionSummaryCard />
         </div>
       </div>
-
-      {/* Send payment modal (unused here but kept for mobile quick-send if needed) */}
-      <Modal
-        isOpen={sendModalOpen}
-        onClose={() => setSendModalOpen(false)}
-        title="Enviar pago"
-      >
-        <SendPayment
-          onSuccess={() => {
-            setSendModalOpen(false)
-            refetch()
-          }}
-        />
-      </Modal>
     </Layout>
   )
 }

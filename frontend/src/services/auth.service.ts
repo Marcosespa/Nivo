@@ -1,22 +1,27 @@
 import api from './api'
-import type { User } from '../types'
 
 export const authService = {
-  async requestOtp(phone: string): Promise<{ message: string }> {
-    const { data } = await api.post('/api/v1/auth/request-otp', { phone })
+  async requestOtp(phone_number: string) {
+    const { data } = await api.post('/api/v1/auth/request-otp', { phone_number })
     return data
   },
 
-  async verifyOtp(
-    phone: string,
-    otp: string
-  ): Promise<{ access_token: string; user: User }> {
-    const { data } = await api.post('/api/v1/auth/verify-otp', { phone, otp })
+  async verifyOtp(payload: {
+    phone_number: string
+    otp_code: string
+    device_id: string
+  }) {
+    const { data } = await api.post('/api/v1/auth/verify-otp', payload)
     return data
   },
 
-  async getProfile(): Promise<User> {
-    const { data } = await api.get('/api/v1/users/me')
+  async refresh(refresh_token: string) {
+    const { data } = await api.post('/api/v1/auth/refresh', { refresh_token })
+    return data
+  },
+
+  async logout(refresh_token: string) {
+    const { data } = await api.post('/api/v1/auth/logout', { refresh_token })
     return data
   },
 }

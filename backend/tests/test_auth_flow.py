@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 
+from app.core.config import settings
+from app.core.database import get_db
 from app.core.security import create_refresh_token
 from app.models.orm.pqc_key import PQCKey as PQCKeyORM
 from app.models.orm.wallet import Wallet as WalletORM
@@ -109,3 +112,46 @@ async def test_refresh_rotation_and_logout_blacklist(client, created_user):
         json={"refresh_token": refresh_payload["refresh_token"]},
     )
     assert reused.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_request_otp_hides_dev_otp_when_host_is_not_local(db_session, fake_redis, monkeypatch):
+    from app.main import app
+    from app.api.v1.auth import get_redis as auth_get_redis
+    from app.api.v1.payments import get_redis as payments_get_redis
+
+    async def override_db():
+        try:
+            yield db_session
+            await db_session.commit()
+        except Exception:
+            await db_session.rollback()
+            raise
+
+    async def override_redis():
+        return fake_redis
+
+    async def fake_send_otp(self, phone_number: str, otp_code: str) -> bool:
+        return True
+
+    monkeypatch.setattr("app.services.sms_service.SMSService.send_otp", fake_send_otp)
+
+    app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[auth_get_redis] = override_redis
+    app.dependency_overrides[payments_get_redis] = override_redis
+
+    original_api_keys = settings.B2B_API_KEYS
+    settings.B2B_API_KEYS = ["test-b2b-api-key-minimum-32-chars"]
+
+    transport = ASGITransport(app=app, client=("203.0.113.10", 54321))
+    async with AsyncClient(transport=transport, base_url="http://api.nivo.internal") as http_client:
+        response = await http_client.post(
+            "/api/v1/auth/request-otp",
+            json={"phone_number": "3101234567"},
+        )
+
+    app.dependency_overrides.clear()
+    settings.B2B_API_KEYS = original_api_keys
+
+    assert response.status_code == 200
+    assert "dev_otp" not in response.json()

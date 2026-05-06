@@ -4,25 +4,29 @@ from __future__ import annotations
 import uuid
 import hashlib
 import hmac
+import json
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from opentelemetry import trace
 
 from app.core.config import settings
 from app.models.orm.user import User as UserORM
 from app.models.orm.wallet import Wallet as WalletORM
+from app.models.orm.pqc_key import PQCKey as PQCKeyORM
 from app.models.orm.transaction import (
     Transaction as TransactionORM,
     TransactionStatusEnum,
     SettlementRailEnum,
     SettlementStatusEnum,
 )
+from app.crypto.service import CryptoService
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 # ─── Errores de dominio ───────────────────────────────────────────────────────
@@ -55,17 +59,16 @@ class PaymentGatewayService:
 
     Flujo de top-up (PSE):
     1. Usuario llama POST /api/v1/topup/initiate
-    2. Backend crea transacción en Wompi
-    3. Wompi retorna payment_link_url
+    2. Backend crea Transaction local en estado PENDING (firmada con PQC)
+    3. Backend llama Wompi (o simula en MOCK_MODE) y obtiene payment_link_url
     4. Usuario completa pago en Wompi (5-10 minutos)
     5. Wompi llama webhook POST /api/v1/topup/webhook
-    6. Backend crea/actualiza transacción local
-    7. Backend acredita balance visual al usuario
+    6. Backend valida firma, localiza transacción por reference
+    7. Backend acredita balance visual al usuario y marca SETTLED (atómico, SELECT ... FOR UPDATE)
 
-    Límites por plan:
-    - FREE: $500,000 COP máximo por transacción
-    - PLUS: $2,000,000 COP máximo por transacción
-    - PRO: $10,000,000 COP máximo por transacción
+    Modo desarrollo:
+    - WOMPI_MOCK_MODE=true genera payment_link_url sintético sin llamar Wompi.
+    - WOMPI_BASE_URL permite apuntar a un sandbox/mock alternativo.
     """
 
     WOMPI_SANDBOX_URL: str = "https://sandbox.wompi.co/v1"
@@ -74,11 +77,17 @@ class PaymentGatewayService:
     MINIMUM_TOPUP_COP: int = 5_000_00  # $5,000 COP en centavos
 
     def __init__(self):
-        self.base_url = (
-            self.WOMPI_SANDBOX_URL
-            if settings.ENVIRONMENT != "production"
-            else self.WOMPI_PRODUCTION_URL
-        )
+        # WOMPI_BASE_URL tiene prioridad (permite apuntar a mock local en dev).
+        if settings.WOMPI_BASE_URL:
+            self.base_url = settings.WOMPI_BASE_URL
+        else:
+            self.base_url = (
+                self.WOMPI_SANDBOX_URL
+                if settings.ENVIRONMENT != "production"
+                else self.WOMPI_PRODUCTION_URL
+            )
+        self.mock_mode = settings.WOMPI_MOCK_MODE and settings.ENVIRONMENT != "production"
+        self.crypto = CryptoService()
 
     async def initiate_topup(
         self,
@@ -90,113 +99,146 @@ class PaymentGatewayService:
         """
         Inicia un top-up (recarga) a través de PSE.
 
-        Args:
-            db: Sesión de BD
-            user_id: UUID del usuario
-            amount_cop: Monto en centavos de COP
-            bank_code: Código del banco (ej: "001" para Bancolombia)
-
-        Returns:
-            Dict con transaction_id y payment_link_url
-
-        Raises:
-            ValueError: Si el monto es inválido o usuario no existe
-            PaymentGatewayUnavailableError: Si Wompi API no responde
+        Crea una Transaction local en PENDING firmada con PQC, y solicita a Wompi
+        un payment_link_url. En MOCK_MODE se omite la llamada a Wompi y se genera
+        un link sintético para pruebas locales.
         """
-        # Validar monto mínimo
-        if amount_cop < self.MINIMUM_TOPUP_COP:
-            raise ValueError(
-                f"Monto mínimo para top-up: ${self.MINIMUM_TOPUP_COP / 100:,.0f} COP"
-            )
+        with tracer.start_as_current_span("payment_gateway.initiate_topup") as span:
+            span.set_attribute("nivo.user_id", str(user_id))
+            span.set_attribute("nivo.amount_cop", amount_cop)
+            span.set_attribute("nivo.mock_mode", self.mock_mode)
 
-        # Buscar usuario
-        stmt = select(UserORM).where(UserORM.id == user_id)
-        result = await db.execute(stmt)
-        user = result.scalar_one_or_none()
-
-        if not user:
-            raise ValueError(f"Usuario {user_id} no existe")
-
-        # Validar límite máximo por plan
-        plan_limits = {
-            "free": 500_000_00,    # $500,000
-            "plus": 2_000_000_00,  # $2,000,000
-            "pro": 10_000_000_00,  # $10,000,000
-        }
-        max_amount = plan_limits.get(user.plan.value, 500_000_00)
-
-        if amount_cop > max_amount:
-            raise ValueError(
-                f"Límite máximo para tu plan: ${max_amount / 100:,.0f} COP"
-            )
-
-        # Generar referencia única (idempotency key)
-        reference = str(uuid.uuid4())
-
-        # Preparar payload para Wompi
-        payload = {
-            "amount_in_cents": amount_cop,
-            "currency": "COP",
-            "customer_email": None,
-            "payment_method": {
-                "type": "PSE",
-                "user_type": 0,  # natural person
-                "user_legal_id_type": "CC",
-                "user_legal_id": user.phone_number,  # Usar teléfono como ID en MVP
-                "financial_institution_code": bank_code,
-                "payment_description": "Recarga Nivo",
-            },
-            "redirect_url": "https://app.nivo.co/topup/result",
-            "reference": reference,
-            "customer_data": {
-                "phone_number": user.phone_number,
-            },
-        }
-
-        # Llamar Wompi API
-        async with httpx.AsyncClient(timeout=self.REQUEST_TIMEOUT_SECONDS) as client:
-            try:
-                response = await client.post(
-                    f"{self.base_url}/transactions",
-                    json=payload,
-                    headers={
-                        "Authorization": f"Bearer {settings.PAYMENT_GATEWAY_API_KEY}",
-                        "Content-Type": "application/json",
-                    },
+            if amount_cop < self.MINIMUM_TOPUP_COP:
+                raise ValueError(
+                    f"Monto mínimo para top-up: ${self.MINIMUM_TOPUP_COP / 100:,.0f} COP"
                 )
 
-                if response.status_code != 201:
-                    logger.error(
-                        f"Wompi API error: {response.status_code} — {response.text}"
-                    )
-                    raise PaymentGatewayUnavailableError(
-                        "No pudimos procesar tu solicitud. Intenta más tarde."
-                    )
+            stmt = select(UserORM).where(UserORM.id == user_id)
+            result = await db.execute(stmt)
+            user = result.scalar_one_or_none()
+            if not user:
+                raise ValueError(f"Usuario {user_id} no existe")
 
-                data = response.json()
-                wompi_tx_id = data.get("data", {}).get("id")
-                payment_link = data.get("data", {}).get("payment_link_url")
+            plan_limits = {
+                "free": 500_000_00,
+                "plus": 2_000_000_00,
+                "pro": 10_000_000_00,
+            }
+            max_amount = plan_limits.get(user.plan.value, 500_000_00)
+            if amount_cop > max_amount:
+                raise ValueError(
+                    f"Límite máximo para tu plan: ${max_amount / 100:,.0f} COP"
+                )
 
-                if not wompi_tx_id or not payment_link:
-                    logger.error(f"Wompi response missing fields: {data}")
-                    raise PaymentGatewayUnavailableError("Respuesta inválida de pasarela")
+            # Recuperar llave PQC activa para firmar la Transaction PENDING
+            pqc_stmt = select(PQCKeyORM).where(
+                (PQCKeyORM.user_id == user_id) & (PQCKeyORM.is_active == True)
+            )
+            pqc_result = await db.execute(pqc_stmt)
+            pqc_key = pqc_result.scalar_one_or_none()
+            if pqc_key is None:
+                raise ValueError("Usuario sin llave PQC activa")
 
+            reference = str(uuid.uuid4())
+            now = datetime.now(timezone.utc)
+
+            # Firmar metadata del top-up. Llave privada es efímera en dev;
+            # en producción proviene de HSM/KMS (ver docs/ADR-003-hsm-key-management.md).
+            signing_kp = self.crypto.generate_signing_keypair()
+            tx_payload = (
+                f"topup:{reference}|user:{user_id}|amount:{amount_cop}|ts:{now.isoformat()}"
+            ).encode()
+            signed = self.crypto.sign_transaction(
+                tx_id=reference,
+                payload=tx_payload,
+                signing_secret_key=signing_kp.secret_key,
+                public_key_fingerprint=pqc_key.key_fingerprint,
+            )
+
+            transaction = TransactionORM(
+                id=uuid.uuid4(),
+                sender_id=user_id,
+                receiver_id=user_id,  # top-up: entra a la misma billetera
+                amount_cop=amount_cop,
+                status=TransactionStatusEnum.PENDING,
+                rail=SettlementRailEnum.PSE,
+                provider_reference=reference,
+                settlement_status=SettlementStatusEnum.PENDING,
+                ml_dsa_signature=signed.signature,
+                signature_key_id=pqc_key.id,
+                message=f"Top-up {bank_code}",
+                created_at=now,
+            )
+            db.add(transaction)
+            await db.flush()
+
+            if self.mock_mode:
+                wompi_tx_id = f"mock_{reference[:8]}"
+                payment_link = f"{self.base_url or 'http://localhost:8001/mock'}/pay/{reference}"
+                logger.info(
+                    f"[MOCK] Wompi top-up initiated for {user_id} — ref={reference}"
+                )
                 return {
                     "wompi_transaction_id": wompi_tx_id,
                     "payment_link_url": payment_link,
                     "reference": reference,
                 }
 
-            except httpx.TimeoutException:
-                logger.error("Wompi API timeout")
-                raise PaymentGatewayUnavailableError(
-                    "La pasarela está tardando. Intenta más tarde."
-                )
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error calling Wompi API: {e}")
-                raise PaymentGatewayUnavailableError(
-                    "Error de conexión con la pasarela de pagos"
-                )
+            payload = {
+                "amount_in_cents": amount_cop,
+                "currency": "COP",
+                "customer_email": None,
+                "payment_method": {
+                    "type": "PSE",
+                    "user_type": 0,
+                    "user_legal_id_type": "CC",
+                    "user_legal_id": user.phone_number,
+                    "financial_institution_code": bank_code,
+                    "payment_description": "Recarga Nivo",
+                },
+                "redirect_url": "https://app.nivo.co/topup/result",
+                "reference": reference,
+                "customer_data": {"phone_number": user.phone_number},
+            }
+
+            async with httpx.AsyncClient(timeout=self.REQUEST_TIMEOUT_SECONDS) as client:
+                try:
+                    response = await client.post(
+                        f"{self.base_url}/transactions",
+                        json=payload,
+                        headers={
+                            "Authorization": f"Bearer {settings.PAYMENT_GATEWAY_API_KEY}",
+                            "Content-Type": "application/json",
+                        },
+                    )
+                    if response.status_code != 201:
+                        logger.error(
+                            f"Wompi API error: {response.status_code} — {response.text}"
+                        )
+                        raise PaymentGatewayUnavailableError(
+                            "No pudimos procesar tu solicitud. Intenta más tarde."
+                        )
+                    data = response.json()
+                    wompi_tx_id = data.get("data", {}).get("id")
+                    payment_link = data.get("data", {}).get("payment_link_url")
+                    if not wompi_tx_id or not payment_link:
+                        logger.error(f"Wompi response missing fields: {data}")
+                        raise PaymentGatewayUnavailableError("Respuesta inválida de pasarela")
+                    return {
+                        "wompi_transaction_id": wompi_tx_id,
+                        "payment_link_url": payment_link,
+                        "reference": reference,
+                    }
+                except httpx.TimeoutException:
+                    logger.error("Wompi API timeout")
+                    raise PaymentGatewayUnavailableError(
+                        "La pasarela está tardando. Intenta más tarde."
+                    )
+                except httpx.HTTPError as e:
+                    logger.error(f"HTTP error calling Wompi API: {e}")
+                    raise PaymentGatewayUnavailableError(
+                        "Error de conexión con la pasarela de pagos"
+                    )
 
     async def process_webhook(
         self,
@@ -206,76 +248,101 @@ class PaymentGatewayService:
         ip_address: str,
     ) -> None:
         """
-        Procesa webhook de Wompi — valida firma SHA-256.
+        Procesa webhook de Wompi — valida firma SHA-256 y acredita saldo atómicamente.
 
-        Wompi signature validation:
-        1. Sort properties alphabetically
-        2. Concatenate: property_values + "." + timestamp + "." + events_secret
-        3. SHA-256 of that string == checksum in request
-
-        Args:
-            db: Sesión de BD
-            payload: Datos del webhook
-            signature: Checksum SHA-256 en header o body
-            ip_address: IP de origen (para logging)
-
-        Raises:
-            InvalidWebhookSignatureError: Si la firma no es válida
+        En WOMPI_MOCK_MODE la validación de firma se omite para permitir pruebas locales
+        con Postman/ngrok sin configurar WOMPI_EVENTS_SECRET.
         """
-        # Extraer timestamp del payload
-        timestamp = payload.get("timestamp", "")
+        with tracer.start_as_current_span("payment_gateway.process_webhook") as span:
+            span.set_attribute("nivo.webhook_ip", ip_address)
+            span.set_attribute("nivo.mock_mode", self.mock_mode)
 
-        # Recolectar valores del payload del evento
-        event_data = payload.get("data", {})
+            timestamp = payload.get("timestamp") or payload.get("signature", {}).get("timestamp", "")
+            event_data = payload.get("data", {})
+            if isinstance(event_data, dict) and isinstance(event_data.get("transaction"), dict):
+                event_data = event_data["transaction"]
 
-        # Construir string a firmar: valores + timestamp + secret
-        # En Wompi, necesitamos concatenar los valores del evento en orden
-        import json
+            if not self.mock_mode:
+                event_json = json.dumps(event_data, separators=(",", ":"), sort_keys=True)
+                to_sign = f"{event_json}.{timestamp}.{settings.WOMPI_EVENTS_SECRET}"
+                expected_signature = hashlib.sha256(to_sign.encode()).hexdigest()
+                if not hmac.compare_digest(signature, expected_signature):
+                    logger.warning(
+                        f"Invalid Wompi webhook signature from {ip_address} — "
+                        f"expected {expected_signature[:8]}... got {signature[:8]}..."
+                    )
+                    raise InvalidWebhookSignatureError("Firma inválida")
 
-        # Serializar el evento (data) y concatenar con timestamp y secret
-        event_json = json.dumps(event_data, separators=(",", ":"), sort_keys=True)
-        to_sign = f"{event_json}.{timestamp}.{settings.WOMPI_EVENTS_SECRET}"
+            reference = event_data.get("reference")
+            wompi_status = event_data.get("status")
+            wompi_tx_id = event_data.get("id")
 
-        expected_signature = hashlib.sha256(to_sign.encode()).hexdigest()
+            if not reference or not wompi_status:
+                logger.error(f"Webhook payload missing required fields: {payload}")
+                return
 
-        if not hmac.compare_digest(signature, expected_signature):
-            logger.warning(
-                f"Invalid Wompi webhook signature from {ip_address} — "
-                f"expected {expected_signature[:8]}... got {signature[:8]}..."
-            )
-            raise InvalidWebhookSignatureError("Firma inválida")
+            span.set_attribute("nivo.wompi_status", wompi_status)
+            span.set_attribute("nivo.reference", reference)
 
-        # Extraer datos de la transacción
-        reference = event_data.get("reference")
-        wompi_status = event_data.get("status")  # "APPROVED", "DECLINED", "PENDING"
-        wompi_tx_id = event_data.get("id")
+            # Evitar problemas con transacciones implícitas previas
+            await db.rollback()
 
-        if not reference or not wompi_status or not wompi_tx_id:
-            logger.error(f"Webhook payload missing required fields: {payload}")
-            return
+            async with db.begin():
+                tx_stmt = (
+                    select(TransactionORM)
+                    .where(TransactionORM.provider_reference == reference)
+                    .with_for_update()
+                )
+                tx_result = await db.execute(tx_stmt)
+                transaction = tx_result.scalar_one_or_none()
 
-        # Buscar transacción por referencia (idempotency)
-        stmt = select(TransactionORM).where(
-            TransactionORM.provider_reference == wompi_tx_id
-        )
-        result = await db.execute(stmt)
-        existing_tx = result.scalar_one_or_none()
+                if transaction is None:
+                    logger.warning(f"Webhook: transacción no encontrada para reference={reference}")
+                    return
 
-        # Si ya fue procesada y aprobada, no procesar de nuevo
-        if existing_tx and existing_tx.settlement_status == SettlementStatusEnum.SETTLED:
-            logger.info(f"Transaction already settled: {wompi_tx_id}")
-            return
+                # Idempotencia: si ya está SETTLED, no procesar de nuevo
+                if transaction.settlement_status == SettlementStatusEnum.SETTLED:
+                    logger.info(f"Webhook idempotente — ya procesado: {reference}")
+                    return
 
-        # Buscar usuario por referencia (UUID en el reference)
-        # En este MVP, buscamos por el provider_reference más reciente sin asignar usuario
-        # Una alternativa es incluir user_id en los metadatos de Wompi
-        logger.info(f"Processing Wompi webhook: {wompi_tx_id} status={wompi_status}")
+                if wompi_status == "APPROVED":
+                    wallet_stmt = (
+                        select(WalletORM)
+                        .where(WalletORM.user_id == transaction.receiver_id)
+                        .with_for_update()
+                    )
+                    wallet_result = await db.execute(wallet_stmt)
+                    wallet = wallet_result.scalar_one_or_none()
+                    if wallet is None:
+                        logger.error(
+                            f"Webhook: billetera no encontrada para user={transaction.receiver_id}"
+                        )
+                        return
 
-        # Por ahora, solo loguear. En producción, asociar con usuario via metadatos
-        if wompi_status == "APPROVED":
-            logger.info(f"Wompi transaction approved: {wompi_tx_id}")
-        elif wompi_status == "DECLINED":
-            logger.info(f"Wompi transaction declined: {wompi_tx_id}")
+                    wallet.display_balance_cop += transaction.amount_cop
+                    transaction.status = TransactionStatusEnum.COMPLETED
+                    transaction.settlement_status = SettlementStatusEnum.SETTLED
+                    transaction.confirmed_at = datetime.now(timezone.utc)
+                    if wompi_tx_id:
+                        transaction.message = (transaction.message or "") + f"|wompi:{wompi_tx_id}"
+                    logger.info(
+                        f"Top-up acreditado: user={transaction.receiver_id} "
+                        f"+${transaction.amount_cop / 100:,.0f} COP (ref={reference})"
+                    )
+
+                elif wompi_status == "DECLINED":
+                    transaction.status = TransactionStatusEnum.FAILED
+                    transaction.settlement_status = SettlementStatusEnum.FAILED
+                    logger.info(f"Top-up rechazado por Wompi: ref={reference}")
+
+                elif wompi_status == "VOIDED":
+                    transaction.status = TransactionStatusEnum.REVERSED
+                    transaction.settlement_status = SettlementStatusEnum.REVERSED
+                    logger.info(f"Top-up anulado: ref={reference}")
+
+                else:
+                    # PENDING u otros estados — no tocar saldo
+                    logger.info(f"Wompi webhook status no terminal: {wompi_status}")
 
     async def get_topup_history(
         self,
@@ -283,17 +350,7 @@ class PaymentGatewayService:
         user_id: uuid.UUID,
         limit: int = 20,
     ) -> list[dict]:
-        """
-        Obtiene historial de top-ups del usuario.
-
-        Args:
-            db: Sesión de BD
-            user_id: UUID del usuario
-            limit: Número máximo de registros
-
-        Returns:
-            Lista de transacciones de tipo 'topup'
-        """
+        """Obtiene historial de top-ups del usuario."""
         stmt = (
             select(TransactionORM)
             .where(

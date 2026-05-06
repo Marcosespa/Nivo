@@ -14,6 +14,7 @@
     { "key": "access_token", "value": "" },
     { "key": "refresh_token", "value": "" },
     { "key": "payment_tx_id", "value": "" },
+    { "key": "b2b_api_key", "value": "dev-b2b-api-key-minimum-32-chars" },
     { "key": "crypto_signature_hex", "value": "" },
     { "key": "crypto_public_key_hex", "value": "" },
     { "key": "seed_sender_phone", "value": "+573001234567" },
@@ -127,6 +128,9 @@
           "name": "GET /api/v1/crypto/algorithms",
           "request": {
             "method": "GET",
+            "header": [
+              { "key": "X-Nivo-Key", "value": "{{b2b_api_key}}" }
+            ],
             "url": "{{base_url}}/api/v1/crypto/algorithms"
           }
         },
@@ -148,6 +152,7 @@
           "request": {
             "method": "POST",
             "header": [
+              { "key": "X-Nivo-Key", "value": "{{b2b_api_key}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -162,6 +167,7 @@
           "request": {
             "method": "POST",
             "header": [
+              { "key": "X-Nivo-Key", "value": "{{b2b_api_key}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -176,6 +182,7 @@
           "request": {
             "method": "POST",
             "header": [
+              { "key": "X-Nivo-Key", "value": "{{b2b_api_key}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {

@@ -26,6 +26,7 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 
 from app.main import app
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import (
     get_current_user,
@@ -162,11 +163,18 @@ async def client(mock_redis):
     app.dependency_overrides[get_db] = lambda: mock_db
     app.dependency_overrides[auth_get_redis] = lambda: mock_redis
     app.dependency_overrides[payments_get_redis] = lambda: mock_redis
+    original_api_keys = settings.B2B_API_KEYS
+    settings.B2B_API_KEYS = ["test-b2b-api-key-minimum-32-chars"]
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://localhost",
+        headers={"X-Nivo-Key": "test-b2b-api-key-minimum-32-chars"},
+    ) as ac:
         yield ac
 
     app.dependency_overrides.clear()
+    settings.B2B_API_KEYS = original_api_keys
 
 
 @pytest.fixture
@@ -181,14 +189,21 @@ async def authed_client(test_user, access_token, mock_redis):
     app.dependency_overrides[get_db] = lambda: mock_db
     app.dependency_overrides[auth_get_redis] = lambda: mock_redis
     app.dependency_overrides[payments_get_redis] = lambda: mock_redis
+    original_api_keys = settings.B2B_API_KEYS
+    settings.B2B_API_KEYS = ["test-b2b-api-key-minimum-32-chars"]
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://localhost",
+        headers={"X-Nivo-Key": "test-b2b-api-key-minimum-32-chars"},
+    ) as ac:
         ac.headers["Authorization"] = f"Bearer {access_token}"
         # Expone el mock_db para que los tests puedan configurarlo
         ac._test_mock_db = mock_db
         yield ac
 
     app.dependency_overrides.clear()
+    settings.B2B_API_KEYS = original_api_keys
 
 
 # ─── Auth: Request OTP ────────────────────────────────────────────────────────
@@ -434,7 +449,7 @@ class TestPayments:
             )
         assert resp.status_code == 404
 
-    async def test_initiate_insufficient_funds_returns_422(self, authed_client):
+    async def test_initiate_insufficient_funds_returns_402(self, authed_client):
         from app.services.payment_service import InsufficientFundsError
         with patch(
             "app.api.v1.payments.payment_svc.initiate_payment",
@@ -444,7 +459,7 @@ class TestPayments:
                 "/api/v1/payments/initiate",
                 json={"receiver_phone": "+573102222222", "amount_cop": 50_000},
             )
-        assert resp.status_code == 422
+        assert resp.status_code == 402
 
     async def test_initiate_daily_limit_exceeded_returns_422(self, authed_client):
         from app.services.payment_service import DailyLimitExceededError
@@ -511,6 +526,13 @@ class TestPayments:
 # ─── Crypto B2B ──────────────────────────────────────────────────────────────
 
 class TestCryptoAPI:
+
+    async def test_crypto_requires_valid_b2b_api_key(self, client):
+        resp = await client.get(
+            "/api/v1/crypto/algorithms",
+            headers={"X-Nivo-Key": "wrong-key"},
+        )
+        assert resp.status_code == 401
 
     async def test_list_algorithms_returns_kem_and_dsa(self, client):
         resp = await client.get("/api/v1/crypto/algorithms")
