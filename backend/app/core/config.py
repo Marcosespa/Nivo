@@ -133,8 +133,20 @@ class Settings(BaseSettings):
     @field_validator("JWT_SECRET_KEY")
     @classmethod
     def validate_jwt_secret(cls, v: str) -> str:
+        # Longitud mínima absoluta — incluso en dev evita HMACs débiles.
         if len(v) < 32:
             raise ValueError("JWT_SECRET_KEY debe tener mínimo 32 caracteres")
+        # Rechazar placeholders comunes que pasarían el test de longitud por accidente.
+        forbidden_markers = ("CHANGE_ME", "change_me", "REPLACE", "replace_with", "dev_secret")
+        if any(marker in v for marker in forbidden_markers):
+            # En dev sólo advertir; en staging/prod fallar duro.
+            import os
+            env = os.getenv("ENVIRONMENT", "development").lower()
+            if env in {"staging", "production"}:
+                raise ValueError(
+                    "JWT_SECRET_KEY contiene un placeholder ('CHANGE_ME', 'replace_with', etc). "
+                    "Genera un secreto real antes de arrancar en staging/producción."
+                )
         return v
 
     @property

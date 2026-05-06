@@ -86,11 +86,14 @@ Tests use SQLite (`aiosqlite`) in a temp file per test session. `FakeRedis` (in 
 | Variable | Purpose |
 |---|---|
 | `ENVIRONMENT` | `development` enables `/api/v1/dev/*` routes and optional webhook signature check |
-| `WOMPI_EVENTS_SECRET` | Used to verify Wompi webhook HMAC-SHA256 signatures |
-| `WOMPI_INTEGRITY_SECRET` | Used to sign Wompi payment link creation requests |
+| `WOMPI_EVENTS_SECRET` | HMAC-SHA256 secret used to verify Wompi webhook signatures (`X-Event-Checksum`). Required in production. |
+| `WOMPI_INTEGRITY_SECRET` | Used to sign payment link creation requests against the Wompi API. |
+| `WOMPI_BASE_URL` | Override of the Wompi API base URL. Empty → `sandbox.wompi.co/v1` in non-prod, `production.wompi.co/v1` in prod. Set to `http://localhost:8001/mock` for a local mock server. |
+| `WOMPI_MOCK_MODE` | `true` skips outbound calls to Wompi and HMAC validation on the webhook (dev/CI only — automatically disabled when `ENVIRONMENT=production`). |
 | `PQC_ALGORITHM` | Swappable without code changes — crypto-agility by design |
 | `MONEY_CUSTODY_MODE` | Controls custody model; `non_custodial_middleware` for MVP |
 | `DATABASE_URL` | Use `postgresql+asyncpg://` for runtime; Alembic strips `+asyncpg` automatically |
+| `JWT_SECRET_KEY` | ≥32 chars. Validator rejects placeholders (`CHANGE_ME`, `replace_with`, etc.) when `ENVIRONMENT=staging\|production`. |
 
 ## Task tracking
 

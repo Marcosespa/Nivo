@@ -57,14 +57,31 @@ Actualiza ambos archivos antes de levantar el stack. No uses los ejemplos como s
 
 ## Ejecución Local
 
-Backend:
+### Quickstart recomendado (Postgres+Redis en Docker, backend nativo)
+
+Es el flujo verificado funcional hoy. Usa la `.venv` ya inicializada con `liboqs`.
+
+```bash
+# Terminal 1 — DB + Redis
+cd /Users/marcosespana/Desktop/Nivo
+docker compose --env-file .env.compose.example -f docker_helper/docker-compose.postgres.yml up -d
+
+# Terminal 2 — backend
+cd /Users/marcosespana/Desktop/Nivo/backend
+source .venv/bin/activate
+.venv/bin/uvicorn app.main:app --reload --host 127.0.0.1
+```
+
+Mantén la DB levantada entre sesiones (`docker compose ... down` solo si vas a recrearla). Para detalles de migraciones, troubleshooting y comandos extra, ver [docs/07-local-dev-guide.md](docs/07-local-dev-guide.md) y [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+
+### Setup inicial del backend (primera vez)
 
 ```bash
 cd backend
-python -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+.venv/bin/alembic upgrade head
 ```
 
 Landing pública:
