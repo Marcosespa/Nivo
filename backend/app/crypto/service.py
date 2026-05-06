@@ -30,21 +30,24 @@ from opentelemetry import trace
 _tracer = trace.get_tracer(__name__)
 logger = logging.getLogger(__name__)
 
-# Import condicional de liboqs
-# En producción, liboqs debe estar instalado.
-# En CI sin liboqs, se usa modo de simulación (solo para tests).
-try:
-    import oqs
-    LIBOQS_AVAILABLE = True
-except ImportError:
+# Import condicional de liboqs.
+# En desarrollo/CI forzamos modo simulación para evitar instalaciones automáticas.
+FORCE_MOCK_PQC = os.getenv("ENVIRONMENT", "development").lower() != "production"
+if FORCE_MOCK_PQC:
     LIBOQS_AVAILABLE = False
-    import warnings
-    warnings.warn(
-        "liboqs no está instalado. Usando modo simulación para PQC. "
-        "NO USAR EN PRODUCCIÓN.",
-        RuntimeWarning,
-        stacklevel=2,
-    )
+else:
+    try:
+        import oqs
+        LIBOQS_AVAILABLE = True
+    except Exception:
+        LIBOQS_AVAILABLE = False
+        import warnings
+        warnings.warn(
+            "liboqs no está instalado. Usando modo simulación para PQC. "
+            "NO USAR EN PRODUCCIÓN.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
 
 # ─── Modelos de datos ─────────────────────────────────────────────────────────

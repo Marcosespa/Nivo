@@ -210,13 +210,13 @@ La forma mas comoda para desarrollo local es:
 Desde la raiz del repo:
 
 ```bash
-docker compose -f docker_helper/docker-compose.postgres.yml up -d
+docker compose --env-file .env.compose.example -f docker_helper/docker-compose.postgres.yml up -d
 ```
 
 Verifica:
 
 ```bash
-docker compose -f docker_helper/docker-compose.postgres.yml ps
+docker compose --env-file .env.compose.example -f docker_helper/docker-compose.postgres.yml ps
 ```
 
 Servicios esperados:
@@ -485,7 +485,7 @@ Antes de abrir esta guia o junto con ella, te sirven:
 
 Si vas a trabajar en backend, esta suele ser la ruta mas rapida:
 
-1. `docker compose -f docker_helper/docker-compose.postgres.yml up -d`
+1. `docker compose --env-file .env.compose.example -f docker_helper/docker-compose.postgres.yml up -d`
 2. `cd backend`
 3. `source .venv/bin/activate`
 4. `.venv/bin/alembic upgrade head`
