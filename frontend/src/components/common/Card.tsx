@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import clsx from 'clsx'
 
 type Variant = 'default' | 'gradient'
@@ -5,7 +6,7 @@ type Variant = 'default' | 'gradient'
 interface CardProps {
   variant?: Variant
   className?: string
-  children: React.ReactNode
+  children: ReactNode
   onClick?: () => void
 }
 
@@ -15,8 +16,8 @@ const variantClasses: Record<Variant, string> = {
     'backdrop-blur-sm',
   ].join(' '),
   gradient: [
-    'bg-gradient-to-br from-indigo-900/90 via-indigo-800/80 to-purple-900/70',
-    'border border-indigo-700/50',
+    'bg-gradient-to-br from-teal-950/95 via-teal-900/85 to-emerald-950/75',
+    'border border-teal-700/40',
     'backdrop-blur-sm',
   ].join(' '),
 }
@@ -42,7 +43,7 @@ export default function Card({
       className={clsx(
         'rounded-2xl p-6',
         variantClasses[variant],
-        onClick && 'cursor-pointer hover:border-indigo-600/60 transition-colors duration-150',
+        onClick && 'cursor-pointer hover:border-teal-500/50 transition-colors duration-150',
         className
       )}
     >

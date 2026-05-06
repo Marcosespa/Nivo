@@ -47,6 +47,9 @@ opentelemetry-instrumentation-sqlalchemy==0.49b0
 opentelemetry-exporter-otlp-proto-http==1.28.0
 sentry-sdk[fastapi]==2.18.0
 
+# ─── Rate limiting (defensa contra fuerza bruta / scraping) ──────────────────
+slowapi==0.1.9
+
 # ─── Utilidades ───────────────────────────────────────────────────────────────
 python-multipart==0.0.12
 python-dotenv==1.0.1

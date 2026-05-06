@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom'
-import { Bell, Menu } from 'lucide-react'
+import { Bell, Menu, Server } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 
 interface HeaderProps {
@@ -7,10 +7,10 @@ interface HeaderProps {
 }
 
 const pageTitles: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/wallet': 'Mi Wallet',
+  '/dashboard': 'Consola',
+  '/wallet': 'Wallet y retiros',
   '/payments': 'Pagos',
-  '/profile': 'Perfil',
+  '/profile': 'Auth, KYC y Crypto',
 }
 
 function UserAvatar({ name }: { name: string }) {
@@ -22,7 +22,7 @@ function UserAvatar({ name }: { name: string }) {
     .toUpperCase()
 
   return (
-    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg flex-shrink-0">
+    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-gray-950 text-sm font-semibold shadow-lg flex-shrink-0">
       {initials}
     </div>
   )
@@ -30,7 +30,9 @@ function UserAvatar({ name }: { name: string }) {
 
 export default function Header({ onMobileMenuOpen }: HeaderProps) {
   const location = useLocation()
-  const user = useAuthStore((s) => s.user)
+  const profile = useAuthStore((s) => s.profile)
+  const baseUrl = useAuthStore((s) => s.baseUrl)
+  const environment = useAuthStore((s) => s.environment)
 
   const pageTitle = pageTitles[location.pathname] || 'Nivo'
 
@@ -50,23 +52,32 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
 
       {/* Right: notification bell + avatar */}
       <div className="flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-900 px-3 py-2">
+          <Server className="w-4 h-4 text-teal-400" />
+          <div className="text-right">
+            <p className="text-xs font-medium text-white">{environment}</p>
+            <p className="text-[11px] text-gray-500">{baseUrl}</p>
+          </div>
+        </div>
+
         <button
           className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
           aria-label="Notificaciones"
         >
           <Bell className="w-5 h-5" />
-          {/* Notification dot */}
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-500 rounded-full" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-teal-500 rounded-full" />
         </button>
 
-        {user && (
+        {profile && (
           <div className="flex items-center gap-2.5">
-            <UserAvatar name={user.full_name} />
+            <UserAvatar name={profile.phone_number} />
             <div className="hidden sm:flex flex-col">
               <span className="text-sm font-medium text-white leading-tight">
-                {user.full_name}
+                {profile.phone_number}
               </span>
-              <span className="text-xs text-gray-500 leading-tight">{user.phone}</span>
+              <span className="text-xs text-gray-500 leading-tight">
+                {profile.plan} · {profile.kyc_status}
+              </span>
             </div>
           </div>
         )}

@@ -31,7 +31,7 @@ access + refresh tokens, blacklist en Redis, y la dependencia `get_current_user`
 # OTP
 - 6 dígitos numéricos
 - Generado con secrets.randbelow(1000000)
-- Almacenado como bcrypt hash en Redis con key: f"otp:{phone_number}:{purpose}"
+- Almacenado como HMAC-SHA256 del OTP en Redis con key: f"otp:{phone_number}:{purpose}"
 - TTL: 300 segundos (5 minutos)
 - Máximo 3 intentos fallidos antes de invalidar (contador en Redis)
 - Rate limit: máximo 3 OTPs por teléfono por hora
@@ -52,4 +52,3 @@ access + refresh tokens, blacklist en Redis, y la dependencia `get_current_user`
 - [ ] Test de rate limiting: 4to OTP en 1 hora retorna 429
 
 **Dependencias:** TASK-001 (modelos ORM)
-

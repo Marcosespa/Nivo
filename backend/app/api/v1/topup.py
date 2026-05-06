@@ -8,7 +8,6 @@ Endpoints:
 """
 
 from __future__ import annotations
-import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -64,6 +63,7 @@ class TopupInitiateRequest(BaseModel):
 class TopupInitiateResponse(BaseModel):
     """Respuesta de iniciación de top-up."""
     payment_link_url: str
+    reference: str
     expires_in_minutes: int = 30  # PSE link válido por 30 minutos
     amount_cop: int
     amount_display: str
@@ -119,6 +119,7 @@ async def initiate_topup(
 
         return TopupInitiateResponse(
             payment_link_url=result["payment_link_url"],
+            reference=result["reference"],
             amount_cop=request.amount_cop,
             amount_display=f"${request.amount_cop / 100:,.0f} COP",
         )
@@ -165,8 +166,13 @@ async def wompi_webhook(
     except Exception:
         return {"status": "ok"}
 
+    if not signature:
+        signature = payload.get("signature", {}).get("checksum", "")
+
     alert_svc = AlertService(redis_client)
     wompi_tx_id = payload.get("data", {}).get("id", "unknown")
+    if isinstance(payload.get("data"), dict) and isinstance(payload["data"].get("transaction"), dict):
+        wompi_tx_id = payload["data"]["transaction"].get("id", wompi_tx_id)
 
     try:
         await gateway_service.process_webhook(db, payload, signature, ip_address)

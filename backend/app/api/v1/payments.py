@@ -23,6 +23,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
+from opentelemetry import trace
 import redis.asyncio as redis
 
 from app.core.config import settings
@@ -44,9 +45,11 @@ from app.services.payment_service import (
     InsufficientFundsError,
     CustodyModeNotExecutableError,
 )
+from app.utils.dev_security import should_expose_dev_secrets
 
 router = APIRouter()
 payment_svc = PaymentService()
+tracer = trace.get_tracer(__name__)
 
 
 # ─── Dependencia: Redis ────────────────────────────────────────────────────────
@@ -168,7 +171,7 @@ class PaymentHistoryResponse(BaseModel):
     ),
 )
 async def initiate_payment(
-    body: PaymentInitiateRequest,
+    request: PaymentInitiateRequest,
     http_request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -183,48 +186,53 @@ async def initiate_payment(
     5. Enviar OTP por SMS para confirmación
     6. Retornar tx_id y detalles para confirmar
     """
-    try:
-        result = await payment_svc.initiate_payment(
-            db=db,
-            redis_client=redis_client,
-            sender_id=current_user.id,
-            receiver_phone=body.receiver_phone,
-            amount_cop=body.amount_cop,
-            message=body.message,
+    with tracer.start_as_current_span("payments.initiate") as span:
+        span.set_attribute("nivo.sender_id", str(current_user.id))
+        span.set_attribute("nivo.amount_cop", request.amount_cop)
+        try:
+            result = await payment_svc.initiate_payment(
+                db=db,
+                redis_client=redis_client,
+                sender_id=current_user.id,
+                receiver_phone=request.receiver_phone,
+                amount_cop=request.amount_cop,
+                message=request.message,
+            )
+            otp_code = await OTPService(redis_client).generate_and_store(
+                current_user.phone_number,
+                "payment",
+            )
+            sms_sent = await payment_svc.sms_service.send_otp(current_user.phone_number, otp_code)
+            if not sms_sent:
+                raise HTTPException(status_code=503, detail="No pudimos enviar el OTP de confirmación")
+        except ReceiverNotFoundError:
+            raise HTTPException(status_code=404, detail="Receptor no encontrado en Nivo")
+        except WalletFrozenError as e:
+            raise HTTPException(status_code=403, detail=str(e))
+        except InsufficientFundsError as e:
+            raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(e))
+        except (DailyLimitExceededError, CustodyModeNotExecutableError) as e:
+            raise HTTPException(status_code=422, detail=str(e))
+
+        return PaymentInitiateResponse(
+            tx_id=result["tx_id"],
+            status=result["status"],
+            receiver_phone=result["receiver_phone"],
+            amount_cop=result["amount_cop"],
+            amount_display=result["amount_display"],
+            quantum_shield=True,
+            pqc_algorithm=settings.PQC_ALGORITHM,
+            expires_in_seconds=result["expires_in_seconds"],
+            dev_otp=otp_code if should_expose_dev_secrets(http_request) else None,
         )
-        otp_code = await OTPService(redis_client).generate_and_store(
-            current_user.phone_number,
-            "payment",
-        )
-        sms_sent = await payment_svc.sms_service.send_otp(current_user.phone_number, otp_code)
-        if not sms_sent:
-            raise HTTPException(status_code=503, detail="No pudimos enviar el OTP de confirmación")
-    except ReceiverNotFoundError:
-        raise HTTPException(status_code=404, detail="Receptor no encontrado en Nivo")
-    except WalletFrozenError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except (DailyLimitExceededError, InsufficientFundsError, CustodyModeNotExecutableError) as e:
-        raise HTTPException(status_code=422, detail=str(e))
-
-    return PaymentInitiateResponse(
-        tx_id=result["tx_id"],
-        status=result["status"],
-        receiver_phone=result["receiver_phone"],
-        amount_cop=result["amount_cop"],
-        amount_display=result["amount_display"],
-        quantum_shield=True,
-        pqc_algorithm=settings.PQC_ALGORITHM,
-        expires_in_seconds=result["expires_in_seconds"],
-        dev_otp=(
-            otp_code
-            if settings.ENVIRONMENT == "development"
-            and http_request.client is not None
-            and http_request.client.host in {"127.0.0.1", "::1"}
-            else None
-        ),
-    )
 
 
+@router.post(
+    "/execute",
+    response_model=PaymentConfirmResponse,
+    status_code=status.HTTP_200_OK,
+    include_in_schema=False,
+)
 @router.post(
     "/confirm",
     response_model=PaymentConfirmResponse,
@@ -254,39 +262,45 @@ async def confirm_payment(
     8. Enviar notificación push al receptor
     9. Retornar comprobante con fingerprint de firma
     """
-    is_valid = await OTPService(redis_client).verify(
-        current_user.phone_number,
-        request.otp_code,
-        "payment",
-    )
-    if not is_valid:
-        raise HTTPException(status_code=401, detail="Código OTP inválido o expirado")
+    with tracer.start_as_current_span("payments.execute") as span:
+        span.set_attribute("nivo.sender_id", str(current_user.id))
+        span.set_attribute("nivo.tx_id", request.tx_id)
 
-    try:
-        transaction = await payment_svc.execute_payment(
-            db=db,
-            redis_client=redis_client,
-            tx_id=request.tx_id,
-            sender_id=current_user.id,
-            otp_code=request.otp_code,
+        is_valid = await OTPService(redis_client).verify(
+            current_user.phone_number,
+            request.otp_code,
+            "payment",
         )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except (DailyLimitExceededError, InsufficientFundsError, CustodyModeNotExecutableError, WalletFrozenError) as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        if not is_valid:
+            raise HTTPException(status_code=401, detail="Código OTP inválido o expirado")
 
-    return PaymentConfirmResponse(
-        tx_id=str(transaction.id),
-        status=transaction.status.value,
-        amount_cop=transaction.amount_cop,
-        amount_display=f"${transaction.amount_cop / 100:,.0f} COP",
-        receiver_phone=transaction.receiver.phone_number,
-        completed_at=transaction.confirmed_at or transaction.created_at,
-        ml_dsa_signature_fingerprint=transaction.ml_dsa_signature.hex()[:16] if transaction.ml_dsa_signature else "none",
-        provider_reference=transaction.provider_reference,
-        settlement_status=transaction.settlement_status.value,
-        receipt_url=f"https://api.nivo.co/receipts/{transaction.id}.pdf",
-    )
+        try:
+            transaction = await payment_svc.execute_payment(
+                db=db,
+                redis_client=redis_client,
+                tx_id=request.tx_id,
+                sender_id=current_user.id,
+                otp_code=request.otp_code,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except InsufficientFundsError as e:
+            raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(e))
+        except (DailyLimitExceededError, CustodyModeNotExecutableError, WalletFrozenError) as e:
+            raise HTTPException(status_code=422, detail=str(e))
+
+        return PaymentConfirmResponse(
+            tx_id=str(transaction.id),
+            status=transaction.status.value,
+            amount_cop=transaction.amount_cop,
+            amount_display=f"${transaction.amount_cop / 100:,.0f} COP",
+            receiver_phone=transaction.receiver.phone_number,
+            completed_at=transaction.confirmed_at or transaction.created_at,
+            ml_dsa_signature_fingerprint=transaction.ml_dsa_signature.hex()[:16] if transaction.ml_dsa_signature else "none",
+            provider_reference=transaction.provider_reference,
+            settlement_status=transaction.settlement_status.value,
+            receipt_url=f"https://api.nivo.co/receipts/{transaction.id}.pdf",
+        )
 
 
 @router.get(

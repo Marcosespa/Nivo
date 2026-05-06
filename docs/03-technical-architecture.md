@@ -166,6 +166,8 @@ Necesitamos infraestructura cloud con soporte PQC nativo, cumplimiento en Colomb
 
 **Alternativas rechazadas:** AWS (más caro, PQC support más tardío), Azure (menos experiencia del equipo), self-hosted (riesgo operacional inaceptable en etapa temprana)
 
+**Backup y DR:** la politica operativa de PostgreSQL vive en `docs/08-postgresql-backup-dr.md`: PITR, retenciones, RPO/RTO, restauracion en instancia temporal y ensayos trimestrales.
+
 ---
 
 ### ADR-005: Detección de Fraude con ML

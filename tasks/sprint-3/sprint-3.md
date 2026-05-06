@@ -2,6 +2,14 @@
 
 ---
 
+### Hardening Sprint 3 — Backup y continuidad
+
+| Prioridad | Tarea | Estado | Evidencia |
+|---|---|---|---|
+| P2 | Estrategia documentada de backup y DR de PostgreSQL | [x] DONE | `docs/08-postgresql-backup-dr.md` define PITR, retenciones, RPO/RTO, restauracion y ensayos |
+
+---
+
 ### TASK-009 — Setup del Proyecto React Native
 **Estado:** [ ] PENDING
 **Agente sugerido:** frontend
@@ -302,4 +310,3 @@ PaymentSuccessScreen:
 **Dependencias:** TASK-009, TASK-011, TASK-003
 
 ---
-

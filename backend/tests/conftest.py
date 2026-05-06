@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
-import tempfile
 import uuid
 from pathlib import Path
 from typing import AsyncIterator
@@ -15,6 +13,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.models.base import Base
 from app.models.orm.pqc_key import PQCKey as PQCKeyORM
 from app.models.orm.user import KYCStatusEnum, User as UserORM, UserPlanEnum
@@ -83,9 +82,7 @@ def anyio_backend():
 
 @pytest_asyncio.fixture
 async def db_session() -> AsyncIterator[AsyncSession]:
-    db_path = Path(tempfile.gettempdir()) / "nivo_test.sqlite3"
-    if db_path.exists():
-        db_path.unlink()
+    db_path = Path("/tmp") / f"nivo_test_{uuid.uuid4().hex}.sqlite3"
 
     engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
     async with engine.begin() as conn:
@@ -115,7 +112,12 @@ async def client(db_session: AsyncSession, fake_redis: FakeRedis) -> AsyncIterat
     from app.api.v1.admin import get_redis as admin_get_redis
 
     async def override_db() -> AsyncIterator[AsyncSession]:
-        yield db_session
+        try:
+            yield db_session
+            await db_session.commit()
+        except Exception:
+            await db_session.rollback()
+            raise
 
     async def override_redis() -> FakeRedis:
         return fake_redis
@@ -126,12 +128,19 @@ async def client(db_session: AsyncSession, fake_redis: FakeRedis) -> AsyncIterat
     app.dependency_overrides[kyc_get_redis] = override_redis
     app.dependency_overrides[topup_get_redis] = override_redis
     app.dependency_overrides[admin_get_redis] = override_redis
+    original_api_keys = settings.B2B_API_KEYS
+    settings.B2B_API_KEYS = ["test-b2b-api-key-minimum-32-chars"]
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as http_client:
+    transport = ASGITransport(app=app, client=("127.0.0.1", 12345))
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://localhost",
+        headers={"X-Nivo-Key": "test-b2b-api-key-minimum-32-chars"},
+    ) as http_client:
         yield http_client
 
     app.dependency_overrides.clear()
+    settings.B2B_API_KEYS = original_api_keys
 
 
 @pytest_asyncio.fixture

@@ -1,40 +1,70 @@
-# Nivo — Docker Helper: Stack completo (API + PostgreSQL + Redis)
-# Ideal para demo, QA o cuando no quieres instalar Python localmente.
+# Nivo — Stack completo desde docker_helper
+#
+# Levanta frontend + backend + postgres + redis + pgAdmin.
+# Ideal para probar todo el proyecto con un solo comando sin depender de runtimes locales.
 #
 # Uso:
 #   docker compose -f docker_helper/docker-compose.full.yml up --build
 #   docker compose -f docker_helper/docker-compose.full.yml down
-#
-# La API queda disponible en:
-#   http://localhost:8000
-#   http://localhost:8000/docs  (Swagger UI)
 
 services:
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8001
+        VITE_APP_NAME: Nivo API Console
+        VITE_ENVIRONMENT: docker
+    container_name: nivo-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - nivo-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/nginx-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
-  api:
+  backend:
     build:
       context: ../backend
       dockerfile: Dockerfile
-    container_name: nivo-api
+    container_name: nivo-backend
     restart: unless-stopped
     env_file:
       - ../backend/.env.docker.example
     environment:
       PYTHONUNBUFFERED: "1"
+      ALLOWED_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000","http://localhost:8001","http://127.0.0.1:8001"]'
     ports:
       - "8001:8000"
     volumes:
-      - ../backend:/app   # hot-reload en desarrollo
+      - ../backend:/app
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - nivo-net
     command: >
       sh -c "
         alembic upgrade head &&
         uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --log-level debug --access-log
       "
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   postgres:
     image: postgres:16-alpine
@@ -44,10 +74,14 @@ services:
       POSTGRES_USER: Nivo
       POSTGRES_PASSWORD: Nivo
       POSTGRES_DB: Nivo_dev
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
       - nivo_postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    networks:
+      - nivo-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U Nivo -d Nivo_dev"]
       interval: 5s
@@ -64,6 +98,8 @@ services:
     command: redis-server --save 60 1 --loglevel warning
     volumes:
       - nivo_redis_data:/data
+    networks:
+      - nivo-net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -87,6 +123,13 @@ services:
         condition: service_healthy
     volumes:
       - nivo_pgadmin_data:/var/lib/pgadmin
+    networks:
+      - nivo-net
+
+networks:
+  nivo-net:
+    driver: bridge
+    name: nivo-full-network
 
 volumes:
   nivo_postgres_data:

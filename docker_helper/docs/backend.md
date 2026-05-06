@@ -61,23 +61,36 @@ El archivo completo de variables está en `backend/.env.docker.example`.
 
 ---
 
-## Endpoints principales
+## Endpoints cubiertos en este stack
 
-| Método | Ruta                       | Descripción                      |
-|--------|----------------------------|----------------------------------|
-| GET    | `/health`                  | Healthcheck                      |
-| POST   | `/api/v1/auth/request-otp` | Solicitar OTP por SMS            |
-| POST   | `/api/v1/auth/verify-otp`  | Verificar OTP → recibe JWT       |
-| GET    | `/api/v1/users/me`         | Perfil del usuario autenticado   |
-| GET    | `/api/v1/users/me/wallet`  | Wallet e información de cuenta   |
-| POST   | `/api/v1/payments/send`    | Enviar pago P2P                  |
-| GET    | `/api/v1/payments/history` | Historial de transacciones       |
-| POST   | `/api/v1/kyc`              | Iniciar verificación KYC         |
-| POST   | `/api/v1/topup`            | Recargar cuenta                  |
-| POST   | `/api/v1/withdrawal`       | Retiro a cuenta bancaria         |
-| POST   | `/api/v1/crypto/keygen`    | Generar par de llaves PQC (B2B)  |
-| POST   | `/api/v1/crypto/sign`      | Firmar datos con ML-DSA-65       |
-| POST   | `/api/v1/crypto/verify`    | Verificar firma PQC              |
+| Metodo | Ruta |
+|---|---|
+| GET | `/health` |
+| GET | `/health/pqc` |
+| GET | `/health/ready` |
+| POST | `/api/v1/dev/seed` |
+| POST | `/api/v1/auth/request-otp` |
+| POST | `/api/v1/auth/verify-otp` |
+| POST | `/api/v1/auth/refresh` |
+| POST | `/api/v1/auth/logout` |
+| GET | `/api/v1/users/me` |
+| GET | `/api/v1/users/me/wallet` |
+| POST | `/api/v1/payments/initiate` |
+| POST | `/api/v1/payments/confirm` |
+| GET | `/api/v1/payments/history` |
+| GET | `/api/v1/payments/{tx_id}` |
+| POST | `/api/v1/kyc/initiate` |
+| GET | `/api/v1/kyc/status` |
+| POST | `/api/v1/topup/initiate` |
+| GET | `/api/v1/topup/history` |
+| POST | `/api/v1/withdrawal/accounts` |
+| GET | `/api/v1/withdrawal/accounts` |
+| POST | `/api/v1/withdrawal/accounts/{account_id}/verify` |
+| POST | `/api/v1/withdrawal/initiate` |
+| GET | `/api/v1/withdrawal/history` |
+| GET | `/api/v1/crypto/algorithms` |
+| POST | `/api/v1/crypto/sign` |
+| POST | `/api/v1/crypto/verify` |
 
 Documentación interactiva: **http://localhost:8001/docs**
 
@@ -99,7 +112,7 @@ docker compose exec backend alembic upgrade head
 docker compose exec backend alembic downgrade -1
 
 # Entrar al contenedor
-docker compose exec backend bash
+docker compose exec backend sh
 
 # Correr tests dentro del contenedor
 docker compose exec backend pytest tests/ -v
@@ -109,9 +122,7 @@ docker compose exec backend pytest tests/ -v
 
 ## Healthcheck
 
-```bash
-GET http://localhost:8000/health  → 200
-```
+`http://localhost:8001/health`
 
 El backend necesita ~20-30 segundos en su primer arranque mientras compila
 dependencias nativas y corre migraciones. Los `depends_on` del frontend esperan
@@ -121,6 +132,6 @@ a que el healthcheck responda antes de arrancar nginx.
 
 ## Puertos
 
-| Puerto host | Puerto contenedor | Descripción                    |
-|-------------|-------------------|--------------------------------|
-| 8001        | 8000              | FastAPI REST + Swagger UI      |
+| Puerto host | Puerto contenedor | Descripcion |
+|---|---|---|
+| 8001 | 8000 | FastAPI REST + Swagger UI |

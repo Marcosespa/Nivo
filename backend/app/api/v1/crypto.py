@@ -15,14 +15,26 @@ Autenticación: API Key en header X-Nivo-Key
 Billing: por operación en el dashboard B2B
 """
 
-from fastapi import APIRouter, HTTPException, Header, status
+from __future__ import annotations
+
+import hashlib
+import secrets
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Header, status
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from opentelemetry import trace
 
 from app.core.config import settings
+from app.core.database import get_db
 from app.crypto.service import CryptoService
+from app.models.orm.b2b_client import B2BClient
 
 router = APIRouter()
 crypto = CryptoService()
+tracer = trace.get_tracer(__name__)
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -61,18 +73,57 @@ class VerifyResponse(BaseModel):
     algorithm: str = "ML-DSA-65"
 
 
-# ─── Dependencia de API Key ───────────────────────────────────────────────────
+# ─── Dependencia de API Key B2B ───────────────────────────────────────────────
+#
+# Autenticación en dos capas:
+#   1. Tabla `b2b_clients` con SHA-256 del API key (fuente canónica).
+#   2. Fallback a `settings.B2B_API_KEYS` (compatibilidad con tests/dev).
+#
+# IMPORTANTE: el billing por operación aún no está implementado. Esta
+# verificación impide que el endpoint sea abusable mientras el equipo de
+# negocio define pricing y pipeline B2B.
 
-async def verify_api_key(x_Nivo_key: str = Header(...)):
-    """Verifica la API key del cliente B2B."""
-    # TODO: verificar key contra BD de clientes B2B
-    # TODO: verificar límites de rate y billing
-    if not x_Nivo_key or len(x_Nivo_key) < 32:
+async def verify_b2b_api_key(
+    x_nivo_key: str = Header(..., alias="X-Nivo-Key"),
+    db: AsyncSession = Depends(get_db),
+) -> str:
+    """Valida la API key contra `b2b_clients.api_key_hash` o el fallback de settings."""
+    if not x_nivo_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key inválida. Obtén tu key en dashboard.Nivo.co",
+            detail="Falta el header X-Nivo-Key",
         )
-    return x_Nivo_key
+
+    key_hash = hashlib.sha256(x_nivo_key.encode()).hexdigest()
+
+    try:
+        stmt = select(B2BClient).where(
+            (B2BClient.api_key_hash == key_hash) & (B2BClient.is_active == True)
+        )
+        result = await db.execute(stmt)
+        client = result.scalar_one_or_none()
+    except Exception:
+        # Si la tabla todavía no existe (dev recién creado), caer al fallback.
+        client = None
+
+    if client is not None:
+        return x_nivo_key
+
+    # Fallback: lista estática (útil para tests/dev sin seed en BD).
+    configured_keys = [api_key for api_key in settings.B2B_API_KEYS if api_key]
+    if configured_keys and any(
+        secrets.compare_digest(x_nivo_key, api_key) for api_key in configured_keys
+    ):
+        return x_nivo_key
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="API key inválida. Contacta al equipo B2B para obtener una.",
+    )
+
+
+# Alias retrocompatible
+verify_api_key = verify_b2b_api_key
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
@@ -81,7 +132,9 @@ async def verify_api_key(x_Nivo_key: str = Header(...)):
     "/algorithms",
     summary="Algoritmos PQC soportados",
 )
-async def list_algorithms():
+async def list_algorithms(
+    _: Annotated[str, Depends(verify_api_key)],
+):
     """Lista los algoritmos PQC disponibles y sus parámetros."""
     return {
         "kem": [
@@ -131,49 +184,56 @@ async def list_algorithms():
         "independiente de futuros avances en computación cuántica."
     ),
 )
-async def sign_data(request: SignRequest) -> SignResponse:
+async def sign_data(
+    request: SignRequest,
+    _api_key: Annotated[str, Depends(verify_api_key)],
+) -> SignResponse:
     """
     Firma datos con ML-DSA-65.
     Genera un keypair efímero, firma los datos, y retorna firma + llave pública.
     Las llaves privadas NUNCA viajan por la API.
     """
-    # Validar que el request no contiene claves privadas
-    extra_fields = set((request.model_extra or {}).keys())
-    if any(
-        ("private" in field.lower())
-        or ("secret" in field.lower())
-        or ("signing" in field.lower() and "key" in field.lower())
-        for field in extra_fields
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Las llaves privadas NUNCA deben enviarse en esta API. Use HSM/KMS.",
+    with tracer.start_as_current_span("crypto.api.sign") as span:
+        span.set_attribute("nivo.pqc_algorithm", settings.PQC_SIGNATURE_ALGORITHM)
+        # Validar que el request no contiene claves privadas
+        extra_fields = set((request.model_extra or {}).keys())
+        if any(
+            ("private" in field.lower())
+            or ("secret" in field.lower())
+            or ("signing" in field.lower() and "key" in field.lower())
+            for field in extra_fields
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Las llaves privadas NUNCA deben enviarse en esta API. Use HSM/KMS.",
+            )
+
+        try:
+            data = bytes.fromhex(request.data_hex)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Los datos deben estar en formato hex válido",
+            )
+
+        # Generar keypair efímero ML-DSA-65.
+        # Diseñado para migración a HSM (GCP/AWS KMS) sin cambios en llamadores:
+        # en producción, generate_signing_keypair() delegará a KMS y signing_secret_key
+        # será un handle opaco nunca materializado en memoria (ver ADR-003 pendiente).
+        signing_kp = crypto.generate_signing_keypair()
+        signed = crypto.sign_transaction(
+            tx_id="b2b_api",
+            payload=data,
+            signing_secret_key=signing_kp.secret_key,
+            public_key_fingerprint=signing_kp.public_key_fingerprint,
         )
+        span.set_attribute("nivo.data_size_bytes", len(data))
 
-    try:
-        data = bytes.fromhex(request.data_hex)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Los datos deben estar en formato hex válido",
+        return SignResponse(
+            signature_hex=signed.signature.hex(),
+            public_key_hex=signing_kp.public_key.hex(),
+            public_key_fingerprint=signed.public_key_fingerprint,
         )
-
-    # Generar keypair efímero ML-DSA-65
-    signing_kp = crypto.generate_signing_keypair()
-
-    # Firmar datos
-    signed = crypto.sign_transaction(
-        tx_id="b2b_api",
-        payload=data,
-        signing_secret_key=signing_kp.secret_key,
-        public_key_fingerprint=signing_kp.public_key_fingerprint,
-    )
-
-    return SignResponse(
-        signature_hex=signed.signature.hex(),
-        public_key_hex=signing_kp.public_key.hex(),
-        public_key_fingerprint=signed.public_key_fingerprint,
-    )
 
 
 @router.post(
@@ -181,7 +241,10 @@ async def sign_data(request: SignRequest) -> SignResponse:
     response_model=VerifyResponse,
     summary="Verificar firma ML-DSA-65",
 )
-async def verify_signature(request: VerifyRequest) -> VerifyResponse:
+async def verify_signature(
+    request: VerifyRequest,
+    _api_key: Annotated[str, Depends(verify_api_key)],
+) -> VerifyResponse:
     """Verifica que una firma ML-DSA-65 sea válida para los datos dados."""
     try:
         from app.crypto.service import SignedTransaction

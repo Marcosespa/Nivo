@@ -21,7 +21,9 @@ class OTPPurposeEnum(str, Enum):
 class OTP(Base):
     """
     Tabla de OTPs — códigos de un solo uso para verificación.
-    Almacena el hash bcrypt del OTP, nunca el código en plano.
+    Mantiene un campo hash para auditoría/compatibilidad; en el flujo activo
+    del MVP el OTP se guarda temporalmente en Redis usando HMAC-SHA256, nunca
+    el código en plano.
 
     En producción, los OTPs se expiran después de 5 minutos.
     Se intenta máximo 3 veces antes de invalidar.
@@ -32,7 +34,7 @@ class OTP(Base):
     # Campos principales
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     phone_number: Mapped[str] = mapped_column(String(15), nullable=False, index=True)
-    otp_hash: Mapped[str] = mapped_column(String(64), nullable=False)  # Bcrypt hash (no SHA)
+    otp_hash: Mapped[str] = mapped_column(String(64), nullable=False)  # Hash hex de 64 chars
     purpose: Mapped[OTPPurposeEnum] = mapped_column(
         SQLEnum(
             OTPPurposeEnum,

@@ -1,287 +1,245 @@
 # Modelo de Negocio — Nivo
-### Revenue Model, Unit Economics & Proyecciones Financieras
 
-**Versión:** 1.0 | **Fecha:** Abril 2026 | **Clasificación:** Confidencial
+### Segmentos, Unit Economics y Metas Realistas
 
----
-
-## 1. Resumen Ejecutivo del Modelo
-
-Nivo opera un modelo **neobanco freemium multi-segmento** con varias fuentes de ingresos:
-
-1. **Subscripción B2C** — usuarios premium con funciones avanzadas
-2. **Transaccional** — comisiones por cambio de divisa, tarjeta virtual y productos habilitados por aliados
-3. **SaaS B2B** — terminal de cobros para pymes (mensual + comisión)
-4. **API B2B** — PQC-as-a-Service para fintechs y bancos (licenciamiento por volumen)
-5. **FX multi-moneda** — spread transparente COP/USD/EUR vía aliado cambiario
-6. **Inversiones vía partner** — revenue share por acciones/ETFs, sin ser broker propio
-7. **Crypto vía exchange aliado** — fee/revenue share por compra/venta, con disclosure de riesgo
-
-El insight clave: **la app B2C es la misión y el activo de marca**, mientras que B2B/API ayuda a financiar auditorías, credibilidad y ventas enterprise. El margen bruto de la API B2B puede ser ~85%, mientras que el margen de la app B2C depende de partners, interchange, FX y suscripciones.
-
-**Ajuste regulatorio MVP:** durante la validación inicial, Nivo no monetiza por custodiar saldos propios. Monetiza por suscripción, tarjeta virtual con aliado, spread/fee permitido sobre servicios de terceros, recibos verificables y API PQC. La captación directa queda fuera del MVP hasta tener SEDPE, COT/Sandbox o entidad vigilada aliada. Ahorro, crypto, acciones y FX se diseñan como módulos del neobanco, pero la ejecución/custodia vive en el partner autorizado hasta que Nivo tenga licencia propia.
+**Version:** 2.0 | **Fecha:** Mayo 2026 | **Clasificacion:** Confidencial
 
 ---
 
-## 2. Segmentos y Propuesta de Valor
+## 1. Resumen Ejecutivo
 
-### Segmento 1 — Usuarios B2C (Consumidores)
+Nivo no debe salir al mercado como "otro neobanco para todos". El mercado colombiano ya tiene billeteras masivas y habitos digitales consolidados. La oportunidad esta en entrar por tres segmentos donde la combinacion de pagos simples, trazabilidad, proteccion post-cuantica y formalidad progresiva puede ser distinta:
 
-**Perfil objetivo:**
-- Millennials y Gen Z en Colombia (25–40 años)
-- Ingreso medio-alto, familiarizados con apps financieras
-- Preocupados por privacidad y seguridad digital
-- Early adopters de tecnología
-- Colombianos en el exterior que manejan COP/EUR/USD o envían dinero a Colombia
+1. **Economia popular y micronegocios** — vendedores, trabajadores independientes y pequenos comercios que necesitan cobrar, registrar ventas y construir historial.
+2. **Colombianos globales y freelancers** — personas que reciben ingresos/remesas en USD/EUR y necesitan convertir, separar y mover dinero con trazabilidad.
+3. **B2B regulado PQC** — fintechs, cooperativas, aseguradoras, bancos medianos y govtechs que necesitan empezar migracion post-cuantica sin crear un equipo criptografico propio.
 
-**Tamaño de mercado:**
-- Colombia: 52M habitantes, 35M con smartphone
-- Usuarios activos de billeteras digitales: ~22M (Nequi + Daviplata + otros)
-- Cifras de "usuarios/cuentas" de billeteras pueden sumar más que la población por duplicidad entre productos; usarlas como señal de adopción, no como usuarios únicos reales
-- TAM objetivo: 3M (usuarios con perfil tech-savvy, ingresos > $1.5M COP/mes)
-- SAM año 1: 200K (Bogotá + Medellín, early adopters)
-- SOM año 1: 50K usuarios activos
-
-**Estructura de planes:**
-
-| Plan | Precio | Incluye |
-|------|--------|---------|
-| Nivo Free | COP $0/mes | Pagos P2P, recarga PSE, bolsillos de ahorro visuales, límite $500K/transacción, recibo protegido básico |
-| Nivo Plus | COP $9,900/mes | Todo lo anterior + tarjeta virtual, límites más altos, finanzas personales, recibos certificados |
-| Nivo Pro | COP $24,900/mes | Todo Plus + multi-moneda (COP/USD/EUR), cambio de divisas, acceso anticipado a inversión/crypto por partner, soporte prioritario |
-
-**Ingresos adicionales B2C:**
-- Cambio de divisas: spread del 1.5% (vs. 2.5–3.5% bancos tradicionales)
-- Tarjeta virtual con emisor/BaaS: COP $4,900 de activación (incluida en Plus/Pro)
-- Recargas por PSE: $0 para crecimiento si el costo del aliado lo permite
-- Recibos certificados ML-DSA para usuarios Pro: incluido o cobro por paquete
-- Módulos de inversión/crypto: revenue share o fee permitido por partner, siempre con disclosure y sin prometer rendimiento
+La app B2C es el laboratorio vivo de confianza. El B2B PQC es la linea de mayor margen. El segmento social no es filantropia: es una estrategia de adquisicion con bajo CAC, datos transaccionales utiles y una narrativa regulatoria fuerte.
 
 ---
 
-### Segmento 2 — Pymes y Comercios
+## 2. Fuentes y Supuestos Base
 
-**Perfil objetivo:**
-- Restaurantes, tiendas, servicios profesionales en Colombia
-- Facturación entre $5M–$500M COP/mes
-- Frustrados con las comisiones de datafóno (2.5–3.5%)
-- Necesitan comprobantes digitales con validez legal
+Los objetivos se construyen con estas referencias externas y restricciones internas:
+
+- Colombia Fintech reporta 269 fintechs asociadas en 2024; pagos digitales crecio de 72 a 83 empresas entre 2023 y 2024. Mas de 60% del ecosistema asociado esta en credito digital y pagos digitales.
+- Colombia Fintech tambien reporta que en 2023 las billeteras digitales alcanzaron 54,63 millones de usuarios/cuentas, mas de 3.000 millones de transacciones y cerca de COP $332 billones movidos. Esto valida adopcion, pero no significa que haya 54,63 millones de usuarios unicos.
+- El Reporte de Inclusion Financiera citado por Colombia Fintech indica que 63% de las operaciones monetarias de 2023 fueron digitales y que 94,6% de adultos tenia acceso a algun producto financiero.
+- DANE EMICRON 2024 muestra que la economia popular/micronegocios sigue siendo grande y mayoritariamente de cuenta propia; en vendedores ambulantes, 97,2% de propietarios eran trabajadores por cuenta propia.
+- Banco de la Republica/analisis de mercado reportan remesas hacia Colombia por alrededor de USD 11.848 millones en 2024; es un flujo grande, pero muy competido y regulado.
+- NIST publico FIPS 203, FIPS 204 y FIPS 205 en agosto de 2024 y recomienda iniciar migracion PQC; esto sostiene la narrativa B2B de cripto-agilidad.
+
+**Consecuencia:** Nivo debe plantear metas de prueba de mercado, no metas de hipercrecimiento. En los primeros 24 meses el objetivo sano es demostrar retencion, frecuencia de uso, CAC bajo por comunidad y 2-5 pilotos B2B pagados.
+
+---
+
+## 3. Los Tres Segmentos
+
+### Segmento 1 — Economia popular y micronegocios
+
+**Cliente inicial:** vendedor independiente, negocio familiar, servicio profesional informal o microcomercio que cobra por transferencia/QR y necesita ordenar sus ventas.
+
+**Dolor principal:**
+
+- Cobra en multiples canales y pierde trazabilidad.
+- No separa plata personal de negocio.
+- No tiene historial limpio para acceder a credito formal.
+- Le cuesta demostrar ingresos ante bancos, arriendos, proveedores o programas publicos.
 
 **Propuesta de valor:**
-Terminal de cobros QR con firma digital ML-DSA. Cada cobro es una transacción con firma post-cuántica — inmutable, auditable, reconocida por la DIAN para facturación electrónica.
 
-**Estructura de precios:**
+"Cobra, registra y construye historial sin volverte contador."
 
-| Plan | Precio | Comisión | Incluye |
-|------|--------|----------|---------|
-| Comercio Básico | COP $0/mes | 1.8% por transacción | QR estático, dashboard básico |
-| Comercio Pro | COP $59,900/mes | 1.2% por transacción | QR dinámico, facturación electrónica DIAN, reportes, ML-DSA certificados |
-| Comercio Enterprise | COP $199,900/mes | 0.8% por transacción | Todo Pro + integración ERP, API webhooks, soporte dedicado |
+Nivo ofrece QR/cobro por link, recibos verificables, registro simple de ingresos/gastos, bolsillos visuales y exportes mensuales. La proteccion post-cuantica se comunica como "recibos que siguen siendo verificables en el futuro", no como jerga tecnica.
 
-**Comparativo vs. competencia:**
+**Monetizacion:**
 
-| Solución | Comisión | Certificación PQC | Facturación DIAN |
-|---------|---------|------------------|-----------------|
-| Datafóno tradicional | 2.5–3.5% | No | No nativa |
-| Wompi | 2.9% + $900 fijo | No | No |
-| Bold | 2.79% | No | No |
-| **Nivo Comercio Pro** | **1.2%** | **Sí (ML-DSA)** | **Sí** |
+| Producto | Precio inicial | Notas |
+|---|---:|---|
+| Nivo Base | COP $0/mes | Cobros, historial limitado, recibos basicos |
+| Nivo Formal | COP $7.900/mes | Reporte mensual, bolsillos, recibos ampliados, soporte |
+| Paquete recibos verificables | COP $3.900/mes | Para usuarios Base con mayor uso |
+| Comision por cobro aliado | 0%-0,6% | Solo si el partner lo permite y sin encarecer el efectivo digital |
+
+**Metas realistas:**
+
+| Hito | Meta |
+|---|---:|
+| Mes 3 | 100 usuarios piloto en una ciudad/comunidad |
+| Mes 6 | 350 usuarios activos mensuales, 80 pagos/semana |
+| Mes 12 | 1.500 usuarios activos, 8% pagando Nivo Formal |
+| Mes 24 | 8.000 usuarios activos, 12% pagando, churn mensual < 6% |
+
+**Criterio de exito:** no es volumen total; es que al menos 35% de usuarios activos registre 4+ movimientos al mes y que 10% use reportes mensuales.
 
 ---
 
-### Segmento 3 — Fintechs / Bancos (API B2B)
+### Segmento 2 — Colombianos globales y freelancers
 
-**Perfil objetivo:**
-- Fintechs colombianas (Addi, Rappi Pay, Lulo Bank, Bold)
-- Fintechs pequeñas y medianas que no tienen equipo para implementar PQC
-- Bancos medianos que necesitan compliance PQC (Banco Popular, Itaú Colombia, Banco Falabella)
-- Gobierno colombiano (MinTIC, agencias con requisitos de seguridad crítica)
+**Cliente inicial:** freelancer colombiano, trabajador remoto, estudiante/profesional en Europa o EE.UU., familia que recibe/remite dinero y necesita manejar COP/USD/EUR.
+
+**Dolor principal:**
+
+- Recibir dinero internacional es costoso y poco transparente.
+- La conversion COP/USD/EUR tiene spreads dificiles de entender.
+- Mezcla dinero de familia, ahorro, impuestos y gastos.
+- Necesita comprobantes claros para justificar origen de fondos.
 
 **Propuesta de valor:**
-PQC-as-a-Service: integra cifrado post-cuántico a tu producto existente en semanas. API REST con SDKs en Python, Node.js y Java. SLA del 99.99%. Certificación de cripto-agilidad incluida.
 
-**Estructura de precios API:**
+"Recibe, separa y mueve tu dinero entre monedas con trazabilidad clara."
 
-| Tier | Volumen mensual | Precio |
-|------|----------------|--------|
-| Starter | Hasta 100K operaciones | USD $500/mes |
-| Growth | 100K – 1M operaciones | USD $0.004 por operación |
-| Enterprise | +1M operaciones | Negociado (estimado USD $0.002/op) |
-| Licencia On-Premise | Instalación propia | USD $50,000/año + soporte |
+El MVP no promete remesas propias ni FX propio sin aliado. Nivo empieza con bolsillos, recibos, trazabilidad, calculadora y flujos con partner-of-record. El usuario entiende cuanto recibio, cuanto costo, quien ejecuto y que recibo queda firmado.
 
-**Operaciones facturables:** key exchange (ML-KEM), firma digital (ML-DSA), verificación de firma, re-encriptación de datos históricos.
+**Monetizacion:**
 
----
+| Producto | Precio inicial | Notas |
+|---|---:|---|
+| Nivo Global | COP $14.900/mes | Bolsillos multi-moneda visuales, reportes, recibos, alertas |
+| FX/remesa via partner | 0,3%-0,9% neto para Nivo | Depende de acuerdo con IMC/banco/remesadora |
+| Reporte fiscal/origen fondos | COP $9.900 por paquete | Exportes y soportes, sin asesoria tributaria |
 
-### Segmento 4 — Consultoría PQC
+**Metas realistas:**
 
-**Perfil objetivo:**
-- Empresas del sector financiero, salud, energía con datos altamente sensibles
-- Organizaciones que necesitan auditoría de cripto-agilidad
-- Empresas con mandatos de compliance (gobierno, defensa)
+| Hito | Meta |
+|---|---:|
+| Mes 3 | 50 usuarios beta desde red Europa-Colombia |
+| Mes 6 | 150 usuarios activos, 30 pagos/recibos internacionales simulados o via partner |
+| Mes 12 | 500 usuarios activos, 15% pagando Nivo Global |
+| Mes 24 | 2.000 usuarios activos, 18% pagando, primer acuerdo partner operativo |
 
-**Servicios:**
-
-| Servicio | Precio | Duración |
-|---------|--------|----------|
-| Auditoría de cripto-agilidad | USD $15,000 – $40,000 | 4–8 semanas |
-| Plan de migración PQC | USD $25,000 – $80,000 | 8–16 semanas |
-| Implementación y acompañamiento | USD $10,000/mes | Contrato mínimo 3 meses |
-| Capacitación equipos técnicos | USD $3,000/día | 1–5 días |
+**Criterio de exito:** 20% de usuarios activos crea 2+ bolsillos y genera al menos 1 reporte/recibo mensual.
 
 ---
 
-### Segmento 5 — Ahorro, multi-moneda, acciones y crypto
+### Segmento 3 — B2B regulado PQC
 
-**Perfil objetivo:**
-- Freelancers colombianos que cobran en USD/EUR y pagan gastos en COP
-- Colombianos en el exterior que mueven dinero entre Europa/EE.UU. y Colombia
-- Pymes exportadoras pequeñas con pagos internacionales
-- Usuarios tech-savvy que ya compran crypto o acciones en apps extranjeras
+**Cliente inicial:** fintech, cooperativa financiera, aseguradora, govtech o banco mediano que necesita una ruta practica para inventario criptografico, firma post-cuantica, recibos verificables o pilotos de migracion.
+
+**Dolor principal:**
+
+- PQC ya es un tema de roadmap, pero no hay equipo interno.
+- Migrar core bancario es lento y riesgoso.
+- Auditoria/compliance pide evidencia, no solo presentaciones.
+- Necesitan pilotos acotados antes de tocar sistemas criticos.
 
 **Propuesta de valor:**
-Una experiencia tipo Revolut para Colombia: ahorrar en bolsillos, cambiar COP/USD/EUR, comprar/vender crypto y acceder a acciones/ETFs desde una sola app, con órdenes firmadas, trazabilidad PQC y aliados responsables de ejecución/custodia.
 
-**Principios regulatorios:**
-- Nivo no actúa como IMC, broker, comisionista ni exchange propio sin licencia.
-- El ahorro real con saldo custodiado requiere banco aliado, SEDPE, COT o estructura equivalente; antes de eso, los bolsillos son metas visuales o subcuentas del aliado.
-- FX se ejecuta vía banco/IMC/aliado cambiario.
-- Acciones/ETFs se ejecutan vía broker regulado o partner internacional validado legalmente.
-- Crypto se ejecuta vía exchange/VASP aliado, separado del saldo de pagos.
-- No se dan recomendaciones de inversión; solo ejecución bajo instrucciones del usuario.
+"PQC-as-a-Service para probar migracion post-cuantica en semanas, no anos."
 
-**Estructura de monetización:**
+La oferta no empieza vendiendo "API infinita". Empieza con pilotos: firma de documentos/recibos, verificacion, inventario de algoritmos vulnerables y un sandbox con API key autenticada.
 
-| Producto | Revenue | Condición de lanzamiento |
-|----------|---------|--------------------------|
-| Bolsillos de ahorro | Suscripción Plus/Pro, revenue share permitido o fee de cuenta | Banco aliado/SEDPE/COT si hay saldo real; visual si no hay custodia |
-| FX COP/USD/EUR | Spread 0.5%–1.5% o fee fijo | Aliado cambiario + términos aprobados |
-| Acciones/ETFs | Revenue share, fee por orden o suscripción Pro | Broker partner + disclosure de riesgo |
-| Crypto | Fee de compra/venta 0.5%–1.5% | Exchange/VASP aliado + AML reforzado |
-| Recibos/órdenes PQC | Incluido en Pro o fee por paquete | `CryptoService` auditado |
+**Monetizacion:**
 
----
+| Producto | Precio inicial | Notas |
+|---|---:|---|
+| Diagnostico PQC | USD $2.500-$7.500 unico | Inventario, mapa de riesgo, plan de migracion |
+| Piloto API PQC | USD $500-$1.500/mes | Sandbox, soporte, limite de operaciones |
+| Produccion controlada | USD $2.000-$5.000/mes | SLA, scopes, auditoria, llaves administradas/HSM |
+| Servicios de integracion | USD $75-$120/hora | Paquetes cerrados, no consultoria abierta infinita |
 
-## 3. Proyecciones Financieras — 24 Meses
+**Metas realistas:**
 
-### Supuestos Clave
+| Hito | Meta |
+|---|---:|
+| Mes 3 | 5 conversaciones calificadas, 1 LOI |
+| Mes 6 | 1 piloto pagado |
+| Mes 12 | 2 clientes piloto pagados, MRR B2B >= USD $1.500 |
+| Mes 24 | 5 clientes B2B, MRR B2B >= USD $10.000 |
 
-- Conversión Free → Plus: 8% de usuarios activos mensuales
-- Conversión Free → Pro: 2%
-- CAC B2C (digital marketing): COP $15,000 (~$3.5 USD)
-- CAC B2B API (ventas directas): USD $2,000
-- Churn mensual B2C: 5%
-- Churn mensual B2B: 2%
-- Tipo de cambio referencia: 1 USD = 4,200 COP
-
-### Proyección de Usuarios B2C
-
-| Mes | Usuarios Activos | Free | Plus | Pro |
-|-----|-----------------|------|------|-----|
-| 3 | 2,000 | 1,800 | 160 | 40 |
-| 6 | 8,000 | 7,000 | 640 | 160 |
-| 9 | 20,000 | 17,400 | 1,600 | 400 |
-| 12 | 50,000 | 43,500 | 4,000 | 1,000 |
-| 18 | 120,000 | 104,400 | 9,600 | 2,400 |
-| 24 | 250,000 | 217,500 | 20,000 | 5,000 |
-
-### Proyección de Ingresos Mensuales (COP Millones)
-
-| Mes | B2C Subs | B2C Transac. | Comercios | API B2B | Consultoría | **Total MRR** |
-|-----|---------|-------------|----------|---------|-------------|--------------|
-| 3 | 2.6M | 0.8M | 0 | 0 | 0 | **3.4M** |
-| 6 | 10.3M | 3.2M | 5.9M | 0 | 0 | **19.4M** |
-| 9 | 25.8M | 8.0M | 23.9M | 8.4M | 42M | **108M** |
-| 12 | 64.5M | 20M | 59.9M | 25.2M | 84M | **253M** |
-| 18 | 154.8M | 48M | 149.8M | 63M | 126M | **541M** |
-| 24 | 322.5M | 100M | 349.5M | 168M | 210M | **1,150M** |
-
-*Nota: Mes 12 MRR ~$60K USD. Mes 24 MRR ~$275K USD. La consultoría es lumpy (proyectos puntuales), no lineal.*
-
-### Estructura de Costos
-
-**Costos fijos mensuales (Mes 1–6):**
-
-| Ítem | Costo/mes (COP) |
-|------|----------------|
-| Equipo técnico (3 devs senior) | $30M |
-| CEO + 1 BD | $20M |
-| Legal + compliance | $5M |
-| Infraestructura cloud (GCP + Cloudflare) | $3M |
-| Herramientas + SaaS | $1M |
-| Marketing digital | $5M |
-| **Total burn mensual** | **$64M (~$15K USD)** |
-
-**Runway objetivo:** 18 meses con ronda seed de USD $400K–$600K.
+**Criterio de exito:** convertir 20% de pilotos pagados a contrato anual o produccion controlada.
 
 ---
 
-## 4. Unit Economics
+## 4. Proyeccion Conservadora 24 Meses
 
-### B2C
+### Usuarios y clientes
 
-| Métrica | Valor |
-|---------|-------|
-| ARPU mensual (promedio ponderado) | COP $4,200 (~$1 USD) |
-| CAC digital | COP $15,000 (~$3.5 USD) |
-| LTV (24 meses, 5% churn) | COP $63,000 (~$15 USD) |
-| **LTV/CAC** | **4.2x** |
-| Margen bruto B2C | ~45% |
-| Payback period | ~3.6 meses |
+| Mes | Economia popular activos | Global/freelancers activos | B2B pagados |
+|---:|---:|---:|---:|
+| 3 | 100 | 50 | 0 |
+| 6 | 350 | 150 | 1 piloto |
+| 12 | 1.500 | 500 | 2 pilotos |
+| 18 | 4.000 | 1.100 | 3 clientes |
+| 24 | 8.000 | 2.000 | 5 clientes |
 
-### B2B API
+### MRR esperado
 
-| Métrica | Valor |
-|---------|-------|
-| ARPU mensual (Starter) | USD $500 |
-| CAC (ventas directas) | USD $2,000 |
-| LTV (36 meses, 2% churn) | USD $17,600 |
-| **LTV/CAC** | **8.8x** |
-| Margen bruto API | ~85% |
-| Payback period | ~4 meses |
+| Mes | Economia popular | Global/freelancers | B2B PQC | Total MRR |
+|---:|---:|---:|---:|---:|
+| 3 | COP $0,2M | COP $0,1M | COP $0 | COP $0,3M |
+| 6 | COP $0,7M | COP $0,3M | COP $2,1M | COP $3,1M |
+| 12 | COP $2,8M | COP $1,5M | COP $6,3M | COP $10,6M |
+| 18 | COP $9,0M | COP $4,2M | COP $16,8M | COP $30,0M |
+| 24 | COP $22,0M | COP $10,0M | COP $42,0M | COP $74,0M |
 
----
-
-## 5. Estrategia de Fundraising
-
-### Pre-seed (Actual — Mes 0)
-- **Monto:** USD $150K–$250K
-- **Fuente:** FFF (Founders, Friends, Family) + iNNpulsa Colombia
-- **Uso:** MVP técnico, equipo fundador mínimo (3 personas), licencias y hosting
-- **Hito para próxima ronda:** MVP funcionando + 500 usuarios activos
-
-### Seed (Mes 6–9)
-- **Monto:** USD $500K–$1.5M
-- **Fuente:** VCs LATAM (Magma Partners, Platanus Ventures, Kaszek Ventures)
-- **Valoración objetivo:** USD $5–8M pre-money
-- **Uso:** Equipo completo (10 personas), marketing de lanzamiento, proceso regulatorio SFC
-- **Hito para próxima ronda:** $30K MRR + 1 contrato B2B firmado
-
-### Serie A (Mes 18–24)
-- **Monto:** USD $5–15M
-- **Fuente:** VCs internacionales + corporate VCs (bancarios latinoamericanos)
-- **Uso:** Expansión Ecuador/Perú, equipo de ventas B2B enterprise, certificación internacional PQC
+**Nota:** usa TRM de referencia COP $4.200/USD. Excluye grants, consultorias puntuales grandes y revenue share no firmado. Es intencionalmente mas bajo que la version anterior porque prioriza evidencia y retencion.
 
 ---
 
-## 6. Alianzas Estratégicas con Impacto Financiero
+## 5. Unit Economics Defensibles
 
-| Aliado | Tipo | Impacto en Revenue |
-|--------|------|-------------------|
-| Pomelo / Dock / Adyen | Tarjeta virtual/BaaS | Reduce alcance PCI y evita emitir tarjeta desde cero |
-| Mastercard / Visa | Red de tarjeta | Habilita revenue de interchange mediante emisor aliado |
-| ACH Colombia / PSE | Transferencias | Habilita pagos y recargas sin captación directa |
-| Truora / MetaMap / Jumio | KYC | Onboarding obligatorio sin construir verificación propia |
-| IMC / banco aliado | Cambio de divisas | Habilita multi-moneda COP/USD/EUR sin licencia cambiaria propia |
-| Broker/comisionista partner | Acciones/ETFs | Habilita inversión sin ser intermediario de valores |
-| Exchange/VASP aliado | Crypto | Habilita compra/venta sin custodiar criptoactivos directamente |
-| Colombia Fintech | Gremio | Credibilidad, eventos, contactos y validación institucional |
-| Cloudflare | Infraestructura | Descuento startup + credibilidad técnica PQC |
-| Bancolombia | Licenciamiento B2B | Potencial contrato de $500K–$2M USD/año |
-| iNNpulsa Colombia | Subvención | $100–$300M COP no dilutivo |
-| MinTIC Colombia | Contrato gobierno | $200M–$1B COP (largo plazo, alta probabilidad post-compliance) |
+### Supuestos iniciales a validar
+
+| Variable | Supuesto Mes 0 | Como validarlo |
+|---|---:|---|
+| CAC comunidad economia popular | COP $8.000-$20.000 | pilotos presenciales, referidos, alianzas barriales |
+| CAC global/freelancer | COP $25.000-$60.000 | contenido, comunidades, referidos Europa-Colombia |
+| CAC B2B | USD $1.000-$4.000 | ventas directas, eventos, LinkedIn, referidos |
+| Costo variable OTP/SMS | por confirmar con proveedor | cotizacion Twilio/alternativas locales |
+| Costo KYC | por confirmar con Truora/MetaMap/Jumio | contrato startup + volumen |
+| Margen bruto B2C | 35%-55% | depende de SMS, KYC, soporte y partner fees |
+| Margen bruto B2B | 70%-85% | depende de soporte, HSM, auditoria y SLA |
+
+### Break-even operativo
+
+Con un burn fundador reducido de COP $35M-$55M/mes, el break-even no debe esperarse antes de Mes 24 salvo que B2B cierre antes. La meta realista no es rentabilidad temprana, sino:
+
+- Mes 6: evidencia de uso recurrente.
+- Mes 12: MRR suficiente para justificar seed/pre-seed o grants.
+- Mes 24: B2B paga infraestructura, auditorias y parte del equipo.
 
 ---
 
-*Revisión trimestral de proyecciones obligatoria. Los números son estimaciones con supuestos conservadores.*
-*CFO por contratar — Mes 8 como prioridad de hiring.*
+## 6. Relacion con la Narrativa Post-Cuantica
+
+La narrativa comercial P0 vive en:
+
+- `ANALISIS_DE_NEGOCIO_RESPUESTAS.md`, seccion 2: propuesta por audiencia y pitch de 20 segundos.
+- `docs/05-go-to-market.md`, seccion "Narrativa comercial del diferenciador post-cuantico".
+
+En el modelo de negocio, PQC se usa de forma distinta por segmento:
+
+- Economia popular: recibos verificables e historial confiable.
+- Global/freelancers: trazabilidad de origen, conversion y soportes.
+- B2B: migracion post-cuantica, auditoria, API y HSM.
+
+---
+
+## 7. Lo Que No Monetizamos Todavia
+
+- Custodia propia de saldos sin SEDPE, COT, banco aliado o estructura equivalente.
+- FX propio sin IMC/banco/aliado cambiario.
+- Crypto propia sin exchange/VASP aliado y controles AML reforzados.
+- Acciones/ETFs sin broker/comisionista o partner regulado.
+- Credito propio sin underwriting, capital, aliado y aprobacion legal.
+
+---
+
+## 8. Siguientes Validaciones
+
+1. Validar narrativa post-cuantica con 10 usuarios no tecnicos y 3 compradores B2B.
+2. Cotizar SMS, KYC y partner de pagos para cerrar costo variable por usuario activo.
+3. Ejecutar piloto economia popular con 100 usuarios y medir retencion de 30 dias.
+4. Ejecutar beta global/freelancer con 50 usuarios y medir uso de bolsillos/reportes.
+5. Conseguir 5 reuniones B2B calificadas y al menos 1 LOI antes de construir SDK publico completo.
+
+---
+
+## 9. Fuentes
+
+- Superintendencia Financiera de Colombia y Banca de las Oportunidades, Reporte de Inclusion Financiera 2024.
+- Colombia Fintech, Fintech Snapshot 2024.
+- DANE, EMICRON 2024.
+- Banco de la Republica, remesas hacia Colombia 2024.
+- NIST, FIPS 203/204/205 y guia de migracion post-cuantica.

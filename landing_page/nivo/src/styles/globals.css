@@ -1,0 +1,160 @@
+@import url('https://rsms.me/inter/inter.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Global typography baseline
+  - Body/UI: Inter
+  - Display/headlines: Neue Haas Grotesk Display with Inter Display fallback
+  - Mono/meta labels: configured in tailwind.config.js as JetBrains Mono stack
+*/
+:root {
+  /* RGB triplets for Tailwind `rgb(var(--token) / <alpha-value>)` */
+  --nivo-ink: 0 0 0;
+  --nivo-paper: 255 255 255;
+  --nivo-stone: 74 74 74;
+  --nivo-stone-soft: 107 107 107;
+  --nivo-mist: 154 154 154;
+  --nivo-cloud: 229 229 229;
+  --nivo-cloud-soft: 243 243 243;
+  --nivo-forest: 26 60 52;
+  --nivo-forest-soft: 37 79 70;
+  --nivo-line: 212 212 212;
+  --nivo-shadow: 0 0 0;
+  --nivo-grid-line: 0 0 0;
+  color-scheme: light;
+  font-family: 'Inter', 'Inter Display', ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-feature-settings: 'ss01', 'ss03', 'cv11';
+  background: rgb(var(--nivo-paper));
+  color: rgb(var(--nivo-ink));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='dark'] {
+  /* Cool graphite base, not pure inversion */
+  --nivo-ink: 236 238 236;
+  --nivo-paper: 11 14 13;
+  --nivo-stone: 186 192 188;
+  --nivo-stone-soft: 154 162 158;
+  --nivo-mist: 118 126 122;
+  --nivo-cloud: 28 34 32;
+  --nivo-cloud-soft: 20 25 23;
+  --nivo-forest: 94 201 170;
+  --nivo-forest-soft: 122 220 190;
+  --nivo-line: 42 50 47;
+  --nivo-shadow: 0 0 0;
+  --nivo-grid-line: 255 255 255;
+  color-scheme: dark;
+}
+
+/*
+  Variable font fallback for Inter.
+  If Inter var is available, body copy uses it for better optical consistency.
+*/
+@supports (font-variation-settings: normal) {
+  :root {
+    font-family: 'Inter var', 'Inter', ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, sans-serif;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  background: rgb(var(--nivo-paper));
+  transition: background-color 260ms ease, color 260ms ease;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: rgb(var(--nivo-paper));
+  color: rgb(var(--nivo-ink));
+  letter-spacing: -0.011em;
+  transition:
+    background-color 260ms ease,
+    color 260ms ease,
+    border-color 260ms ease,
+    box-shadow 260ms ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  min-height: 100vh;
+  background: rgb(var(--nivo-paper));
+  color: rgb(var(--nivo-ink));
+}
+
+body *,
+body *::before,
+body *::after {
+  transition:
+    background-color 260ms ease,
+    color 260ms ease,
+    border-color 260ms ease,
+    fill 260ms ease,
+    stroke 260ms ease,
+    box-shadow 260ms ease;
+}
+
+/*
+  Selection color uses the only accent in the system:
+  forest (#1A3C34)
+*/
+::selection {
+  background-color: rgb(var(--nivo-forest));
+  color: rgb(255 255 255);
+}
+
+/*
+  Headline family:
+  Neue Haas Grotesk Display -> Neue Haas Grotesk -> Inter Display -> Inter
+  Tight tracking is intentional to preserve the editorial / Swiss-bank tone.
+*/
+h1,
+h2,
+h3,
+h4 {
+  font-family:
+    'Neue Haas Grotesk Display Pro',
+    'Neue Haas Grotesk',
+    'Inter Display',
+    'Inter',
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  letter-spacing: -0.025em;
+  color: rgb(var(--nivo-ink));
+}
+
+/*
+  Utility hook for any component that needs display typography explicitly.
+*/
+.font-display {
+  font-family:
+    'Neue Haas Grotesk Display Pro',
+    'Neue Haas Grotesk',
+    'Inter Display',
+    'Inter',
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html,
+  body,
+  #root,
+  body *,
+  body *::before,
+  body *::after {
+    transition: none !important;
+  }
+}

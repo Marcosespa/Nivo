@@ -5,8 +5,8 @@
 @tailwind utilities;
 
 :root {
-  --nivo-primary: #4f46e5;
-  --nivo-secondary: #10b981;
+  --nivo-primary: #14b8a6;
+  --nivo-secondary: #34d399;
 }
 
 * {
@@ -36,12 +36,12 @@ body {
 
 /* Focus ring */
 *:focus-visible {
-  @apply outline-none ring-2 ring-indigo-500 ring-offset-2 ring-offset-gray-950;
+  @apply outline-none ring-2 ring-teal-500 ring-offset-2 ring-offset-gray-950;
 }
 
 /* Selection color */
 ::selection {
-  @apply bg-indigo-600 text-white;
+  @apply bg-teal-600 text-white;
 }
 
 /* Smooth transitions */

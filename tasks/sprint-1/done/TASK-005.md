@@ -43,7 +43,7 @@ Si `settings.TWILIO_ACCOUNT_SID` está vacío, loggear el OTP en consola con for
 **Criterios de éxito:**
 - [ ] Con credenciales de Twilio sandbox: SMS llega al número de prueba
 - [ ] Sin credenciales: OTP se imprime en consola y el flujo funciona
-- [ ] El OTP NUNCA se almacena en plano — solo el bcrypt hash en Redis
+- [ ] El OTP NUNCA se almacena en plano — solo hash HMAC-SHA256 en Redis
 - [ ] Máximo 3 OTPs por teléfono por hora (Redis counter)
 
 **Dependencias:** TASK-002

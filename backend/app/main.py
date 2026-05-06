@@ -7,10 +7,25 @@ Autor: Nivo Engineering
 """
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from fastapi.responses import JSONResponse
+
+try:
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    FASTAPI_INSTRUMENTATION_AVAILABLE = True
+except ImportError:
+    FASTAPI_INSTRUMENTATION_AVAILABLE = False
+
+try:
+    from slowapi import Limiter
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware
+    from slowapi.util import get_remote_address
+    SLOWAPI_AVAILABLE = True
+except ImportError:
+    SLOWAPI_AVAILABLE = False
 
 from app.core.config import settings
 from app.core.database import init_db
@@ -60,7 +75,8 @@ app = FastAPI(
 )
 
 # FastAPI auto-instrumentation — uses global TracerProvider set during lifespan
-FastAPIInstrumentor.instrument_app(app, excluded_urls="health,^/$")
+if FASTAPI_INSTRUMENTATION_AVAILABLE:
+    FastAPIInstrumentor.instrument_app(app, excluded_urls="health,^/$")
 
 # ─── Middleware ────────────────────────────────────────────────────────────────
 
@@ -77,6 +93,25 @@ if settings.ENVIRONMENT == "production":
         TrustedHostMiddleware,
         allowed_hosts=settings.ALLOWED_HOSTS,
     )
+
+# ─── Rate limiting global por IP (slowapi) ────────────────────────────────────
+# Defensa contra fuerza bruta / scraping. Usa RATE_LIMIT_GENERAL (default
+# "100/minute"). Las rutas críticas pueden sobreescribir con @limiter.limit(...).
+if SLOWAPI_AVAILABLE:
+    limiter = Limiter(
+        key_func=get_remote_address,
+        default_limits=[settings.RATE_LIMIT_GENERAL],
+    )
+    app.state.limiter = limiter
+
+    @app.exception_handler(RateLimitExceeded)
+    async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Demasiadas solicitudes. Intenta en un minuto."},
+        )
+
+    app.add_middleware(SlowAPIMiddleware)
 
 # ─── Routers ──────────────────────────────────────────────────────────────────
 

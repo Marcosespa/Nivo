@@ -27,6 +27,10 @@ Nequi, Daviplata y Bancolombia App ya resolvieron parte del hábito digital, per
 
 Al mismo tiempo, gran parte del sistema financiero digital aún depende de RSA y ECC, algoritmos vulnerables a una computadora cuántica suficientemente potente. El ataque *"harvest now, decrypt later"* permite capturar datos cifrados hoy para descifrarlos mañana. Nivo convierte esa amenaza en una ventaja de producto: cada usuario, no solo clientes enterprise, debe sentir que su dinero y sus datos están protegidos para la era post-cuántica.
 
+### Ámbito social y formalidad progresiva
+
+El **core de negocio** incluye una apuesta de impacto: ayudar a mitigar la exclusión de quienes trabajan en informalidad (formación, crédito, bienestar), avanzando en la **escalera de la formalidad progresiva** —billeteras digitales, historia crediticia real, alternativas al crédito “gota a gota” con productos formales y apoyo sin persecución— según lo describe [**AMBITO_SOCIAL.md**](AMBITO_SOCIAL.md). La síntesis en modelo de negocio está en [docs/02-business-model.md](docs/02-business-model.md).
+
 ---
 
 ## Repositorio — Estructura del Proyecto
@@ -34,6 +38,7 @@ Al mismo tiempo, gran parte del sistema financiero digital aún depende de RSA y
 ```
 Nivo/
 ├── README.md                  ← Este archivo
+├── AMBITO_SOCIAL.md           ← Misión social, formalidad progresiva, inclusión
 ├── docs/
 │   ├── 00-strategic-review.md ← Memo estratégico regulatorio-first
 │   ├── 01-vision-strategy.md  ← CEO vision, decisiones estratégicas
@@ -41,7 +46,8 @@ Nivo/
 │   ├── 03-technical-architecture.md ← Stack, ADRs, diagramas
 │   ├── 04-roadmap.md          ← Roadmap MVP a 12 meses
 │   ├── 05-go-to-market.md     ← GTM, competidores, aliados
-│   └── 06-regulatory-compliance.md  ← SFC, UIAF, KYC, PCI, PQC compliance
+│   ├── 06-regulatory-compliance.md  ← SFC, UIAF, KYC, PCI, PQC compliance
+│   └── 08-postgresql-backup-dr.md   ← Backups, PITR y disaster recovery
 ├── backend/
 │   ├── app/
 │   │   ├── api/               ← Endpoints FastAPI (routers)
@@ -110,11 +116,13 @@ GCP_PROJECT_ID=Nivo-prod
 |-----------|-------------|
 | [Memo Estratégico](docs/00-strategic-review.md) | Revisión ejecutiva de nombre, regulación, mercado y ruta MVP |
 | [Visión & Estrategia](docs/01-vision-strategy.md) | Decisiones del CEO, propuesta de valor, posicionamiento |
+| [Ámbito social](AMBITO_SOCIAL.md) | Formalidad progresiva, inclusión financiera, impacto |
 | [Modelo de Negocio](docs/02-business-model.md) | Segmentos, monetización, unit economics |
 | [Arquitectura Técnica](docs/03-technical-architecture.md) | Stack, decisiones de arquitectura (ADRs), PQC |
 | [Roadmap](docs/04-roadmap.md) | MVP a 12 meses, hitos, entregables |
 | [Go-to-Market](docs/05-go-to-market.md) | GTM, competidores, aliados estratégicos |
 | [Regulación & Compliance](docs/06-regulatory-compliance.md) | SFC, UIAF, AML/LAFT, KYC, PCI-DSS, PQC standards |
+| [Backup & DR PostgreSQL](docs/08-postgresql-backup-dr.md) | Backups, PITR, RPO/RTO y restauración operativa |
 
 ---
 
@@ -214,4 +222,3 @@ Propietario — Nivo SAS © 2025-2026. Todos los derechos reservados.
 ---
 
 *Para contribuir ver [CONTRIBUTING.md](CONTRIBUTING.md). Para reportar vulnerabilidades de seguridad, ver [SECURITY.md](SECURITY.md).*
-# Nivo

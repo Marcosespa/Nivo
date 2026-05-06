@@ -37,6 +37,7 @@ from app.services.auth_service import AuthService
 from app.services.sms_service import SMSService
 from app.services.kyc_funnel_service import kyc_funnel_service
 from app.models.orm.kyc_funnel_event import KYCFunnelStepEnum
+from app.utils.dev_security import should_expose_dev_secrets
 from app.utils.validators import validate_colombian_phone
 
 router = APIRouter()
@@ -157,10 +158,9 @@ async def request_otp(
         "phone_number": phone_normalized[:7] + "****",  # Enmascarar
     }
 
-    # dev_otp solo si ENVIRONMENT=development Y la petición viene de localhost.
-    # Doble gate: si ENVIRONMENT se mal-configura en staging, la IP externa lo bloquea.
-    _client_host = http_request.client.host if http_request.client else ""
-    if settings.ENVIRONMENT == "development" and _client_host in {"127.0.0.1", "::1"}:
+    # Dev-only helper para pruebas locales cuando no hay SMS real.
+    # Doble gate (env=development + localhost) implementado en should_expose_dev_secrets.
+    if should_expose_dev_secrets(http_request):
         response["dev_otp"] = otp_code
 
     return response

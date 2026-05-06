@@ -3,6 +3,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+ARG VITE_API_BASE_URL=http://localhost:8001
+ARG VITE_APP_NAME="Nivo API Console"
+ARG VITE_ENVIRONMENT=development
+
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_APP_NAME=$VITE_APP_NAME
+ENV VITE_ENVIRONMENT=$VITE_ENVIRONMENT
+
 # Install dependencies first (better layer caching)
 COPY package.json package-lock.json* ./
 RUN npm ci --frozen-lockfile

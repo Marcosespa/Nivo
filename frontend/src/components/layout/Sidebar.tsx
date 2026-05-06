@@ -3,7 +3,7 @@ import {
   LayoutDashboard,
   Wallet,
   Send,
-  User,
+  ShieldCheck,
   LogOut,
   Shield,
   X,
@@ -17,18 +17,18 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/wallet', label: 'Wallet', icon: Wallet },
+  { to: '/dashboard', label: 'Consola', icon: LayoutDashboard },
+  { to: '/wallet', label: 'Wallet y retiros', icon: Wallet },
   { to: '/payments', label: 'Pagos', icon: Send },
-  { to: '/profile', label: 'Perfil', icon: User },
+  { to: '/profile', label: 'Auth, KYC y Crypto', icon: ShieldCheck },
 ]
 
 export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
-  const logout = useAuthStore((s) => s.logout)
+  const clearSession = useAuthStore((s) => s.clearSession)
   const navigate = useNavigate()
 
   const handleLogout = () => {
-    logout()
+    clearSession()
     navigate('/login', { replace: true })
   }
 
@@ -36,10 +36,13 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-6 border-b border-gray-800">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
           <Shield className="w-5 h-5 text-white" />
         </div>
-        <span className="text-xl font-bold text-white tracking-tight">Nivo</span>
+        <div>
+          <span className="text-xl font-bold text-white tracking-tight">Nivo</span>
+          <p className="text-xs text-gray-500">Backend console</p>
+        </div>
 
         {/* Mobile close button */}
         <button
@@ -62,7 +65,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               clsx(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+                  ? 'bg-teal-500/15 text-teal-300 border border-teal-500/30'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800/70'
               )
             }
@@ -72,7 +75,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 <Icon
                   className={clsx(
                     'w-5 h-5 flex-shrink-0',
-                    isActive ? 'text-indigo-400' : 'text-gray-500'
+                    isActive ? 'text-teal-300' : 'text-gray-500'
                   )}
                 />
                 {label}

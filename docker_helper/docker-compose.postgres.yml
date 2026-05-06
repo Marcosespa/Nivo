@@ -1,5 +1,5 @@
-# Nivo — Docker Helper: Bases de datos para desarrollo local
-# Levanta PostgreSQL 16 + Redis 7 en modo standalone (sin la app)
+# Nivo — Docker Helper: Alias legacy del stack de bases de datos
+# Mantiene compatibilidad con comandos anteriores.
 #
 # Uso:
 #   docker compose -f docker_helper/docker-compose.postgres.yml up -d
