@@ -12,14 +12,14 @@ class NivoAreaChart extends StatefulWidget {
     required this.values,
     required this.xLabels,
     this.height = 200,
-    this.lineColor = NivoColors.forest,
+    this.lineColor,
     this.fillColor,
   });
 
   final List<double> values;
   final List<String> xLabels;
   final double height;
-  final Color lineColor;
+  final Color? lineColor;
   final Color? fillColor;
 
   @override
@@ -47,6 +47,7 @@ class _NivoAreaChartState extends State<NivoAreaChart>
 
   @override
   Widget build(BuildContext context) {
+    final line = widget.lineColor ?? NivoColors.forest;
     return SizedBox(
       height: widget.height,
       width: double.infinity,
@@ -57,8 +58,8 @@ class _NivoAreaChartState extends State<NivoAreaChart>
             values: widget.values,
             xLabels: widget.xLabels,
             progress: Curves.easeOutCubic.transform(_c.value),
-            line: widget.lineColor,
-            fill: widget.fillColor ?? widget.lineColor.withValues(alpha: 0.14),
+            line: line,
+            fill: widget.fillColor ?? line.withValues(alpha: 0.14),
           ),
         ),
       ),

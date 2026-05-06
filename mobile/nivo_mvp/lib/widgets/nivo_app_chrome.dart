@@ -156,6 +156,9 @@ class NivoBottomTabBar extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         item.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -189,13 +192,13 @@ class NivoSurface extends StatelessWidget {
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(18),
-    this.color = NivoColors.paper,
+    this.color,
     this.radius = 26,
   });
 
   final Widget child;
   final EdgeInsets padding;
-  final Color color;
+  final Color? color;
   final double radius;
 
   @override
@@ -203,7 +206,7 @@ class NivoSurface extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: color,
+        color: color ?? NivoColors.paper,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: NivoColors.line),
       ),
@@ -246,6 +249,8 @@ class NivoSectionHeader extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
@@ -257,6 +262,8 @@ class NivoSectionHeader extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   subtitle!,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     height: 1.5,
@@ -341,18 +348,29 @@ class NivoSegmentedControl extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 6,
+                ),
                 decoration: BoxDecoration(
                   color: active ? NivoColors.ink : Colors.transparent,
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(
-                  labels[index],
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: active ? NivoColors.paper : NivoColors.stone,
+                // FittedBox reduce el tamaño del label sólo cuando no cabe,
+                // evitando que "Transferencias" parta a dos líneas.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.center,
+                  child: Text(
+                    labels[index],
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: active ? NivoColors.paper : NivoColors.stone,
+                    ),
                   ),
                 ),
               ),

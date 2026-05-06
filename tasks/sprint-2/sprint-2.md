@@ -2,6 +2,18 @@
 
 ---
 
+### Hardening Sprint 2 — Deuda P0/P2 cerrada
+
+| Prioridad | Tarea | Estado | Evidencia |
+|---|---|---|---|
+| P0 | Cerrar/autenticar endpoint B2B PQC | [x] DONE | `b2b_clients`, migracion `0003`, validacion `X-Nivo-Key`, tests B2B |
+| P0 | Tests de integracion P2P minimo 5 casos | [x] DONE | `backend/tests/test_p2p_integration.py` cubre happy path, OTP invalido, receptor desconocido, saldo insuficiente e historial |
+| P0 | Narrativa comercial post-cuantica | [x] DONE | `ANALISIS_DE_NEGOCIO_RESPUESTAS.md` y `docs/05-go-to-market.md` |
+| P2 | `auth_service.py` usa `settings.DEBUG` | [x] DONE | Gate doble `settings.DEBUG` + `ENVIRONMENT=development` |
+| P2 | Sincronizar docs OTP bcrypt vs HMAC | [x] DONE | `OTPService` y `OTP ORM` documentan HMAC-SHA256 temporal en Redis |
+
+---
+
 ### TASK-006 — Integrar Truora para KYC
 **Estado:** [ ] PENDING
 **Agente sugerido:** backend
@@ -165,4 +177,3 @@ created_at: TIMESTAMPTZ DEFAULT NOW()
 **Dependencias:** TASK-003, TASK-007
 
 ---
-

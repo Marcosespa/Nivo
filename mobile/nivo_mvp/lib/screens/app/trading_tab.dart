@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/fintech_mvp_content.dart';
@@ -90,14 +91,15 @@ class _TradingTabState extends State<TradingTab> {
     String side,
     StockQuote quote,
   ) {
+    HapticFeedback.mediumImpact();
     return showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: NivoColors.paper,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
           child: Column(
@@ -238,6 +240,8 @@ class _TradingSuccessState extends StatelessWidget {
                       children: [
                         Text(
                           '${selectedQuote.symbol} · ${selectedQuote.name}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.inter(
                             fontSize: 22,
                             fontWeight: FontWeight.w600,
@@ -248,6 +252,8 @@ class _TradingSuccessState extends StatelessWidget {
                         const SizedBox(height: 6),
                         Text(
                           '${formatMoney(selectedQuote.price)} · ${formatPercent(selectedQuote.changePct)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             color: selectedQuote.changePct >= 0
@@ -321,6 +327,8 @@ class _TradingSuccessState extends StatelessWidget {
                         children: [
                           Text(
                             position.symbol,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -330,6 +338,8 @@ class _TradingSuccessState extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             '${formatUnits(position.shares, decimals: 2)} acc · avg ${formatMoney(position.averagePrice)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               color: NivoColors.stone,
@@ -397,6 +407,8 @@ class _TradingSuccessState extends StatelessWidget {
                           children: [
                             Text(
                               stock.symbol,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -406,6 +418,8 @@ class _TradingSuccessState extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               stock.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 color: NivoColors.stone,

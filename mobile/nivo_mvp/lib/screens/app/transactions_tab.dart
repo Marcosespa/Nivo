@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/fintech_mvp_content.dart';
@@ -46,31 +47,53 @@ class _TransactionsTabState extends State<TransactionsTab> {
     }).toList();
   }
 
+  Future<void> _handleRefresh() async {
+    HapticFeedback.lightImpact();
+    await Future<void>.delayed(const Duration(milliseconds: 1100));
+    if (!mounted) return;
+    setState(() {}); // Re-render simulado para la demo.
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Movimientos actualizados'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-          sliver: SliverToBoxAdapter(
-            child: switch (widget.state) {
-              DemoViewState.loading => const _TransactionsLoadingState(),
-              DemoViewState.empty => const _TransactionsEmptyState(),
-              DemoViewState.error => const _TransactionsErrorState(),
-              DemoViewState.success => _TransactionsSuccessState(
-                  controller: _searchController,
-                  selectedFilter: _selectedFilter,
-                  onFilterChanged: (value) =>
-                      setState(() => _selectedFilter = value),
-                  onQueryChanged: (value) => setState(() => _query = value),
-                  items: _filteredTransactions,
-                  onOpenItem: (item) => _showTransactionDetails(context, item),
-                ),
-            },
-          ),
+    return RefreshIndicator(
+      color: NivoColors.forest,
+      backgroundColor: NivoColors.paper,
+      onRefresh: _handleRefresh,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
         ),
-      ],
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+            sliver: SliverToBoxAdapter(
+              child: switch (widget.state) {
+                DemoViewState.loading => const _TransactionsLoadingState(),
+                DemoViewState.empty => const _TransactionsEmptyState(),
+                DemoViewState.error => const _TransactionsErrorState(),
+                DemoViewState.success => _TransactionsSuccessState(
+                    controller: _searchController,
+                    selectedFilter: _selectedFilter,
+                    onFilterChanged: (value) =>
+                        setState(() => _selectedFilter = value),
+                    onQueryChanged: (value) => setState(() => _query = value),
+                    items: _filteredTransactions,
+                    onOpenItem: (item) => _showTransactionDetails(context, item),
+                  ),
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -83,9 +106,9 @@ class _TransactionsTabState extends State<TransactionsTab> {
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: NivoColors.paper,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
           child: Column(
@@ -157,9 +180,9 @@ class _TransactionsTabState extends State<TransactionsTab> {
                 child: Column(
                   children: [
                     _DetailRow(label: 'Fecha', value: item.dateLabel),
-                    const Divider(height: 20, color: NivoColors.line),
+                    Divider(height: 20, color: NivoColors.line),
                     _DetailRow(label: 'Referencia', value: item.reference),
-                    const Divider(height: 20, color: NivoColors.line),
+                    Divider(height: 20, color: NivoColors.line),
                     _DetailRow(label: 'Categoría', value: item.category),
                   ],
                 ),
@@ -308,6 +331,8 @@ class _TransactionRow extends StatelessWidget {
                   children: [
                     Text(
                       item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -317,6 +342,8 @@ class _TransactionRow extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       item.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: NivoColors.stone,

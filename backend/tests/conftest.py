@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, Asyn
 from app.core.database import get_db
 from app.core.config import settings
 from app.models.base import Base
-from app.api.v1.crypto import verify_api_key
 from app.models.orm.pqc_key import PQCKey as PQCKeyORM
 from app.models.orm.user import KYCStatusEnum, User as UserORM, UserPlanEnum
 from app.models.orm.wallet import Wallet as WalletORM
@@ -79,9 +78,7 @@ def anyio_backend():
 
 @pytest_asyncio.fixture
 async def db_session() -> AsyncIterator[AsyncSession]:
-    db_path = Path("/tmp/nivo_test.sqlite3")
-    if db_path.exists():
-        db_path.unlink()
+    db_path = Path("/tmp") / f"nivo_test_{uuid.uuid4().hex}.sqlite3"
 
     engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
     async with engine.begin() as conn:
@@ -121,7 +118,6 @@ async def client(db_session: AsyncSession, fake_redis: FakeRedis) -> AsyncIterat
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[auth_get_redis] = override_redis
     app.dependency_overrides[payments_get_redis] = override_redis
-    app.dependency_overrides[verify_api_key] = lambda: "test-b2b-client"
     original_api_keys = settings.B2B_API_KEYS
     settings.B2B_API_KEYS = ["test-b2b-api-key-minimum-32-chars"]
 

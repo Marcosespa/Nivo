@@ -223,6 +223,8 @@ class _CurrenciesSuccessState extends StatelessWidget {
                       const Spacer(),
                       Text(
                         pocket.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color:
@@ -241,6 +243,8 @@ class _CurrenciesSuccessState extends StatelessWidget {
                                       ? 'Kč '
                                       : '€',
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
@@ -391,6 +395,8 @@ class _CurrenciesSuccessState extends StatelessWidget {
                             children: [
                               Text(
                                 '${item.code} · ${item.name}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
@@ -400,6 +406,8 @@ class _CurrenciesSuccessState extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 item.rateLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   color: NivoColors.stone,

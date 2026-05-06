@@ -405,7 +405,7 @@ class _TrustStrip extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
           top: BorderSide(color: NivoColors.line),
           bottom: BorderSide(color: NivoColors.line),
@@ -433,7 +433,7 @@ class _TrustStrip extends StatelessWidget {
                     width: 6,
                     height: 6,
                     margin: const EdgeInsets.only(top: 7, right: 12),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: NivoColors.forest,
                       shape: BoxShape.circle,
                     ),

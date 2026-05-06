@@ -45,7 +45,7 @@ class NivoTopBar extends StatelessWidget {
                   Container(
                     width: 6,
                     height: 6,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: NivoColors.forest,
                       shape: BoxShape.circle,
                     ),
@@ -111,7 +111,7 @@ class _GhostIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      shape: const CircleBorder(side: BorderSide(color: NivoColors.line)),
+      shape: CircleBorder(side: BorderSide(color: NivoColors.line)),
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,

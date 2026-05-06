@@ -1,26 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/fintech_mvp_content.dart';
 import '../../theme/nivo_colors.dart';
 import '../../utils/nivo_formatters.dart';
 import '../../widgets/demo_preview.dart';
+import '../../widgets/nivo_animated_balance.dart';
 import '../../widgets/nivo_app_chrome.dart';
 import '../../widgets/nivo_charts.dart';
 
+/// Mapa de quick cards → índice de pestaña destino.
+/// EUR / USD → FX (2) · Tarjeta → Movimientos (1) · Crypto → Crypto (4).
+const Map<String, int> _quickCardTabRouting = {
+  'Cuenta EUR': 2,
+  'Cuenta USD': 2,
+  'Tarjeta física': 1,
+  'Crypto': 4,
+};
+
 class HomeTab extends StatelessWidget {
-  const HomeTab({super.key, required this.state});
+  const HomeTab({
+    super.key,
+    required this.state,
+    required this.onNavigateTab,
+  });
 
   final DemoViewState state;
+  final ValueChanged<int> onNavigateTab;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFFFFFFF), Color(0xFFF7F8F7)],
+          colors: [NivoColors.paper, NivoColors.cloudSoft],
         ),
       ),
       child: CustomScrollView(
@@ -37,6 +53,14 @@ class HomeTab extends StatelessWidget {
                 DemoViewState.error => const _HomeErrorState(),
                 DemoViewState.success => _HomeSuccessState(
                     onExpand: () => _showDashboardSheet(context),
+                    onQuickCardTap: (card) {
+                      final idx = _quickCardTabRouting[card.title];
+                      if (idx != null) {
+                        HapticFeedback.selectionClick();
+                        onNavigateTab(idx);
+                      }
+                    },
+                    onActionTap: _handleActionTap,
                   ),
               },
             ),
@@ -44,6 +68,23 @@ class HomeTab extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _handleActionTap(String label) {
+    // Mapeo de acciones rápidas → pestañas relevantes.
+    HapticFeedback.selectionClick();
+    switch (label) {
+      case 'Enviar':
+      case 'Recibir':
+        onNavigateTab(1); // Movimientos
+        break;
+      case 'Cambiar':
+        onNavigateTab(2); // Divisas
+        break;
+      case 'Invertir':
+        onNavigateTab(3); // Trading
+        break;
+    }
   }
 
   Future<void> _showDashboardSheet(BuildContext context) {
@@ -58,9 +99,11 @@ class HomeTab extends StatelessWidget {
         expand: false,
         builder: (context, controller) {
           return Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: NivoColors.paper,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
             ),
             child: CustomScrollView(
               controller: controller,
@@ -107,8 +150,8 @@ class HomeTab extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 10),
-                              Text(
-                                formatMoney(FintechMvpContent.totalBalance),
+                              NivoAnimatedBalance(
+                                value: FintechMvpContent.totalBalance,
                                 style: GoogleFonts.inter(
                                   fontSize: 34,
                                   fontWeight: FontWeight.w600,
@@ -117,7 +160,7 @@ class HomeTab extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 18),
-                              const SizedBox(
+                              SizedBox(
                                 height: 110,
                                 child: NivoSparkline(
                                   points: FintechMvpContent.totalBalanceTrend,
@@ -280,17 +323,23 @@ class HomeTab extends StatelessWidget {
 }
 
 class _HomeSuccessState extends StatelessWidget {
-  const _HomeSuccessState({required this.onExpand});
+  const _HomeSuccessState({
+    required this.onExpand,
+    required this.onQuickCardTap,
+    required this.onActionTap,
+  });
 
   final VoidCallback onExpand;
+  final ValueChanged<HomeQuickCard> onQuickCardTap;
+  final ValueChanged<String> onActionTap;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         const SizedBox(height: 18),
-        Text(
-          formatMoney(FintechMvpContent.totalBalance),
+        NivoAnimatedBalance(
+          value: FintechMvpContent.totalBalance,
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 42,
@@ -319,43 +368,69 @@ class _HomeSuccessState extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final card = FintechMvpContent.homeQuickCards[index];
+              final hasRoute = _quickCardTabRouting.containsKey(card.title);
               return SizedBox(
                 width: 180,
-                child: NivoSurface(
-                  color: NivoColors.paper,
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(card.icon, size: 20, color: NivoColors.ink),
-                      const Spacer(),
-                      Text(
-                        card.title,
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: NivoColors.ink,
-                        ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: hasRoute ? () => onQuickCardTap(card) : null,
+                    borderRadius: BorderRadius.circular(26),
+                    child: NivoSurface(
+                      color: NivoColors.paper,
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(card.icon,
+                                  size: 20, color: NivoColors.ink),
+                              const Spacer(),
+                              if (hasRoute)
+                                Icon(
+                                  Icons.arrow_outward_rounded,
+                                  size: 14,
+                                  color: NivoColors.mist,
+                                ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Text(
+                            card.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: NivoColors.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            card.subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: NivoColors.stone,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            card.value,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.4,
+                              color: NivoColors.ink,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        card.subtitle,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: NivoColors.stone,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        card.value,
-                        style: GoogleFonts.inter(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.4,
-                          color: NivoColors.ink,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               );
@@ -379,7 +454,7 @@ class _HomeSuccessState extends StatelessWidget {
               color: index == 0 ? NivoColors.ink : NivoColors.cloudSoft,
               borderRadius: BorderRadius.circular(24),
               child: InkWell(
-                onTap: () {},
+                onTap: () => onActionTap(action.label),
                 borderRadius: BorderRadius.circular(24),
                 child: Padding(
                   padding: const EdgeInsets.all(18),
@@ -394,6 +469,8 @@ class _HomeSuccessState extends StatelessWidget {
                       Expanded(
                         child: Text(
                           action.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.inter(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,

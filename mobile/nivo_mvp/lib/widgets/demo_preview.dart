@@ -37,9 +37,9 @@ Future<void> showDemoStateSheet({
     backgroundColor: Colors.transparent,
     builder: (context) {
       return Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: NivoColors.paper,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
         child: Column(
@@ -145,7 +145,7 @@ class _StateOptionTile extends StatelessWidget {
                 ),
               ),
               if (active)
-                const Icon(
+                Icon(
                   Icons.check_rounded,
                   size: 18,
                   color: NivoColors.paper,
@@ -253,7 +253,7 @@ class NivoErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.cloud_off_rounded,
               size: 30,
               color: NivoColors.ink,

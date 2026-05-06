@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/fintech_mvp_content.dart';
 import '../../theme/nivo_colors.dart';
 import '../../utils/nivo_formatters.dart';
 import '../../widgets/demo_preview.dart';
+import '../../widgets/nivo_animated_balance.dart';
 import '../../widgets/nivo_app_chrome.dart';
 import '../../widgets/nivo_charts.dart';
 
@@ -28,32 +30,54 @@ class _CryptoTabState extends State<CryptoTab> {
         (sum, asset) => sum + (asset.price * asset.quantity),
       );
 
+  Future<void> _handleRefresh() async {
+    HapticFeedback.lightImpact();
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) return;
+    setState(() {}); // Re-fetch simulado: re-renderiza tarjetas y gráfico.
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Crypto actualizada · precios refrescados'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-          sliver: SliverToBoxAdapter(
-            child: switch (widget.state) {
-              DemoViewState.loading => const _CryptoLoadingState(),
-              DemoViewState.empty => const _CryptoEmptyState(),
-              DemoViewState.error => const _CryptoErrorState(),
-              DemoViewState.success => _CryptoSuccessState(
-                  portfolioTotal: _portfolioTotal,
-                  selectedAsset: _selectedAsset,
-                  assets: FintechMvpContent.cryptoAssets,
-                  movers: FintechMvpContent.cryptoMovers,
-                  onSelectAsset: (symbol) =>
-                      setState(() => _selectedSymbol = symbol),
-                  onTrade: (side) =>
-                      _showTradeSheet(context, side, _selectedAsset),
-                ),
-            },
-          ),
+    return RefreshIndicator(
+      color: NivoColors.forest,
+      backgroundColor: NivoColors.paper,
+      onRefresh: _handleRefresh,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
         ),
-      ],
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+            sliver: SliverToBoxAdapter(
+              child: switch (widget.state) {
+                DemoViewState.loading => const _CryptoLoadingState(),
+                DemoViewState.empty => const _CryptoEmptyState(),
+                DemoViewState.error => const _CryptoErrorState(),
+                DemoViewState.success => _CryptoSuccessState(
+                    portfolioTotal: _portfolioTotal,
+                    selectedAsset: _selectedAsset,
+                    assets: FintechMvpContent.cryptoAssets,
+                    movers: FintechMvpContent.cryptoMovers,
+                    onSelectAsset: (symbol) =>
+                        setState(() => _selectedSymbol = symbol),
+                    onTrade: (side) =>
+                        _showTradeSheet(context, side, _selectedAsset),
+                  ),
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -62,14 +86,15 @@ class _CryptoTabState extends State<CryptoTab> {
     String side,
     CryptoAsset asset,
   ) {
+    HapticFeedback.mediumImpact();
     return showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: NivoColors.paper,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
           child: Column(
@@ -169,8 +194,8 @@ class _CryptoSuccessState extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              Text(
-                formatMoney(portfolioTotal),
+              NivoAnimatedBalance(
+                value: portfolioTotal,
                 style: GoogleFonts.inter(
                   fontSize: 34,
                   fontWeight: FontWeight.w600,
@@ -197,6 +222,8 @@ class _CryptoSuccessState extends StatelessWidget {
             children: [
               Text(
                 '${selectedAsset.symbol} · ${selectedAsset.name}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
@@ -207,6 +234,8 @@ class _CryptoSuccessState extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 '${formatMoney(selectedAsset.price)} · ${formatPercent(selectedAsset.changePct)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   color: selectedAsset.changePct >= 0
@@ -286,6 +315,8 @@ class _CryptoSuccessState extends StatelessWidget {
                           children: [
                             Text(
                               asset.symbol,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -295,6 +326,8 @@ class _CryptoSuccessState extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               '${asset.name} · ${formatUnits(asset.quantity)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 color: NivoColors.stone,

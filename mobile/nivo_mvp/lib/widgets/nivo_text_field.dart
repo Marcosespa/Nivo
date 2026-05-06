@@ -67,15 +67,15 @@ class NivoTextField extends StatelessWidget {
             suffixIcon: suffix,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: NivoColors.line),
+              borderSide: BorderSide(color: NivoColors.line),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: NivoColors.line),
+              borderSide: BorderSide(color: NivoColors.line),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: NivoColors.forest, width: 1.5),
+              borderSide: BorderSide(color: NivoColors.forest, width: 1.5),
             ),
           ),
         ),

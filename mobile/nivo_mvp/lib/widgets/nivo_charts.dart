@@ -9,23 +9,24 @@ class NivoSparkline extends StatelessWidget {
   const NivoSparkline({
     super.key,
     required this.points,
-    this.lineColor = NivoColors.forest,
+    this.lineColor,
     this.fillColor,
     this.strokeWidth = 2.4,
   });
 
   final List<double> points;
-  final Color lineColor;
+  final Color? lineColor;
   final Color? fillColor;
   final double strokeWidth;
 
   @override
   Widget build(BuildContext context) {
+    final line = lineColor ?? NivoColors.forest;
     return CustomPaint(
       painter: _SparklinePainter(
         points: points,
-        lineColor: lineColor,
-        fillColor: fillColor ?? lineColor.withValues(alpha: 0.08),
+        lineColor: line,
+        fillColor: fillColor ?? line.withValues(alpha: 0.08),
         strokeWidth: strokeWidth,
       ),
       child: const SizedBox.expand(),
@@ -102,16 +103,16 @@ class NivoScoreRing extends StatelessWidget {
     required this.value,
     this.size = 112,
     this.thickness = 10,
-    this.color = NivoColors.forest,
-    this.backgroundColor = NivoColors.cloud,
+    this.color,
+    this.backgroundColor,
     this.child,
   });
 
   final double value;
   final double size;
   final double thickness;
-  final Color color;
-  final Color backgroundColor;
+  final Color? color;
+  final Color? backgroundColor;
   final Widget? child;
 
   @override
@@ -129,8 +130,8 @@ class NivoScoreRing extends StatelessWidget {
             painter: _ScoreRingPainter(
               value: clampedValue,
               thickness: thickness,
-              color: color,
-              backgroundColor: backgroundColor,
+              color: color ?? NivoColors.forest,
+              backgroundColor: backgroundColor ?? NivoColors.cloud,
             ),
           ),
           if (child != null) child!,

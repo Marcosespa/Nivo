@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/fintech_mvp_content.dart';
-import '../utils/nivo_formatters.dart';
+import '../theme/nivo_colors.dart';
 import '../widgets/demo_preview.dart';
+import '../widgets/nivo_animated_balance.dart';
 import '../widgets/nivo_app_chrome.dart';
 import 'app/crypto_tab.dart';
 import 'app/currencies_tab.dart';
@@ -38,29 +40,47 @@ class _PostAuthHomeScreenState extends State<PostAuthHomeScreen> {
     'Crypto',
   ];
 
+  void _handleTabChange(int value) {
+    if (value == _currentIndex) return;
+    HapticFeedback.selectionClick();
+    setState(() => _currentIndex = value);
+  }
+
+  void _handleThemeToggle() {
+    HapticFeedback.lightImpact();
+    NivoThemeController.instance.toggle();
+  }
+
   @override
   Widget build(BuildContext context) {
     final tabs = [
-      HomeTab(state: _tabStates[0]),
+      HomeTab(
+        state: _tabStates[0],
+        onNavigateTab: _handleTabChange,
+      ),
       TransactionsTab(state: _tabStates[1]),
       CurrenciesTab(state: _tabStates[2]),
       TradingTab(state: _tabStates[3]),
       CryptoTab(state: _tabStates[4]),
     ];
 
+    final isDark = NivoThemeController.instance.isDark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: NivoColors.paper,
       bottomNavigationBar: NivoBottomTabBar(
         currentIndex: _currentIndex,
         items: _items,
-        onChanged: (value) => setState(() => _currentIndex = value),
+        onChanged: _handleTabChange,
       ),
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            NivoTopBar(
-              totalBalance: formatMoney(FintechMvpContent.totalBalance),
+            _HomeTopBar(
+              balance: FintechMvpContent.totalBalance,
+              isDark: isDark,
+              onToggleTheme: _handleThemeToggle,
               onAvatarTap: () => showDemoStateSheet(
                 context: context,
                 tabLabel: _labels[_currentIndex],
@@ -79,5 +99,148 @@ class _PostAuthHomeScreenState extends State<PostAuthHomeScreen> {
         ),
       ),
     );
+  }
+}
+
+/// Top bar del shell fintech con saldo animado + toggle de tema + avatar demo.
+class _HomeTopBar extends StatelessWidget {
+  const _HomeTopBar({
+    required this.balance,
+    required this.isDark,
+    required this.onToggleTheme,
+    required this.onAvatarTap,
+  });
+
+  final double balance;
+  final bool isDark;
+  final VoidCallback onToggleTheme;
+  final VoidCallback onAvatarTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 6),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _BrandPill(),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: NivoColors.cloudSoft,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: NivoColors.line),
+                ),
+                child: NivoTopBarBalance(
+                  value: balance,
+                  color: NivoColors.ink,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _RoundIconButton(
+                  onTap: onToggleTheme,
+                  icon: isDark
+                      ? Icons.light_mode_rounded
+                      : Icons.dark_mode_rounded,
+                  tooltip:
+                      isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro',
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: onAvatarTap,
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: NivoColors.ink,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'ME',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: NivoColors.paper,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BrandPill extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: NivoColors.ink,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'NIVO',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 2,
+          color: NivoColors.paper,
+        ),
+      ),
+    );
+  }
+}
+
+class _RoundIconButton extends StatelessWidget {
+  const _RoundIconButton({
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final button = Material(
+      color: NivoColors.cloudSoft,
+      shape: CircleBorder(side: BorderSide(color: NivoColors.line)),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(9),
+          child: Icon(icon, size: 18, color: NivoColors.ink),
+        ),
+      ),
+    );
+    if (tooltip == null) return button;
+    return Tooltip(message: tooltip!, child: button);
   }
 }

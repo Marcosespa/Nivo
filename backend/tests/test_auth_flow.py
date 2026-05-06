@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.api.v1.crypto import verify_api_key
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import create_refresh_token
@@ -140,7 +139,6 @@ async def test_request_otp_hides_dev_otp_when_host_is_not_local(db_session, fake
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[auth_get_redis] = override_redis
     app.dependency_overrides[payments_get_redis] = override_redis
-    app.dependency_overrides[verify_api_key] = lambda: "test-b2b-client"
 
     original_api_keys = settings.B2B_API_KEYS
     settings.B2B_API_KEYS = ["test-b2b-api-key-minimum-32-chars"]

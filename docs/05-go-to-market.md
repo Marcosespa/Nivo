@@ -33,6 +33,29 @@ Ankatech ya está convenciendo al primer banco colombiano de adoptar PQC en 2025
 
 ## 2. Estrategia Go-to-Market
 
+### Narrativa comercial del diferenciador post-cuantico
+
+**Tesis:** Nivo no vende criptografia; vende confianza duradera. La ventaja tecnica se comunica como recibos verificables, proteccion de largo plazo y preparacion frente a riesgos que la banca tradicional todavia no explica al usuario final.
+
+**Mensaje principal:** "Tu plata y tus datos, protegidos para la proxima era digital."
+
+**Elevator pitch B2C:** "Hoy muchos sistemas financieros siguen usando criptografia que podria quedar obsoleta con computadores cuanticos. Nivo nace preparado: cada pago y recibo queda protegido con seguridad post-cuantica, para que tus movimientos sigan siendo confiables en el futuro."
+
+**Elevator pitch B2B:** "Nivo permite a bancos y fintechs integrar seguridad post-cuantica en semanas, con APIs autenticadas, recibos verificables y una ruta clara hacia HSM/KMS, sin reconstruir su core."
+
+**Pruebas de credibilidad:**
+- Cada transaccion P2P se firma con ML-DSA-65 antes de persistirse.
+- El canal criptografico se disena en modo hibrido ML-KEM-768 + X25519.
+- La API B2B exige `X-Nivo-Key` validada contra clientes activos.
+- Las llaves privadas no se aceptan por request; la ruta enterprise apunta a HSM/KMS.
+
+**Reglas de copy:**
+- Abrir con tranquilidad, privacidad y recibos verificables.
+- Usar "post-cuantico" como respaldo, no como barrera de entrada.
+- Evitar promesas absolutas como "imposible de hackear".
+- Explicar "harvest now, decrypt later" como "datos robados hoy para intentar leerlos manana".
+- Para inversionistas, ligar PQC con moat tecnico, compliance y revenue B2B.
+
 ### Fase 1 — Primeros 100 usuarios: comunidad antes que pauta (Mes 1–3)
 
 **Canal:** red personal, colombianos en el exterior, freelancers, emprendedores y comunidades tech/fintech.

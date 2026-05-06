@@ -46,7 +46,8 @@ Nivo/
 │   ├── 03-technical-architecture.md ← Stack, ADRs, diagramas
 │   ├── 04-roadmap.md          ← Roadmap MVP a 12 meses
 │   ├── 05-go-to-market.md     ← GTM, competidores, aliados
-│   └── 06-regulatory-compliance.md  ← SFC, UIAF, KYC, PCI, PQC compliance
+│   ├── 06-regulatory-compliance.md  ← SFC, UIAF, KYC, PCI, PQC compliance
+│   └── 08-postgresql-backup-dr.md   ← Backups, PITR y disaster recovery
 ├── backend/
 │   ├── app/
 │   │   ├── api/               ← Endpoints FastAPI (routers)
@@ -121,6 +122,7 @@ GCP_PROJECT_ID=Nivo-prod
 | [Roadmap](docs/04-roadmap.md) | MVP a 12 meses, hitos, entregables |
 | [Go-to-Market](docs/05-go-to-market.md) | GTM, competidores, aliados estratégicos |
 | [Regulación & Compliance](docs/06-regulatory-compliance.md) | SFC, UIAF, AML/LAFT, KYC, PCI-DSS, PQC standards |
+| [Backup & DR PostgreSQL](docs/08-postgresql-backup-dr.md) | Backups, PITR, RPO/RTO y restauración operativa |
 
 ---
 
