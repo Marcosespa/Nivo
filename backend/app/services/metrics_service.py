@@ -26,7 +26,10 @@ GMV_ANOMALY_THRESHOLD = 0.30  # alert if current GMV drops >30% vs 7-day avg
 class MetricsService:
 
     async def calculate_and_save_daily_snapshot(
-        self, db: AsyncSession, snapshot_date: date | None = None
+        self,
+        db: AsyncSession,
+        snapshot_date: date | None = None,
+        redis_client: redis.Redis | None = None,
     ) -> BusinessMetricsDaily:
         """
         Calculates all business metrics for `snapshot_date` (default: yesterday)
@@ -139,16 +142,38 @@ class MetricsService:
         )
         kyc_rejected: int = kyc_rejected_result.scalar_one()
 
-        # ── OTPs generated that day ────────────────────────────────────────────
-        otps_result = await db.execute(
-            select(func.count()).where(
-                and_(
-                    OTP.created_at >= day_start,
-                    OTP.created_at < day_end,
+        # ── OTPs: Redis counters (source of truth); DB table is audit-only ────
+        date_str = snapshot_date.strftime("%Y%m%d")
+        if redis_client is not None:
+            _gen = await redis_client.get(f"metrics:otp:gen:{date_str}")
+            _ok = await redis_client.get(f"metrics:otp:ok:{date_str}")
+            _fail = await redis_client.get(f"metrics:otp:fail:{date_str}")
+            otps_generated: int = int(_gen or 0)
+            otps_verified: int = int(_ok or 0)
+            otps_failed: int = int(_fail or 0)
+        else:
+            otps_result = await db.execute(
+                select(func.count()).where(
+                    and_(
+                        OTP.created_at >= day_start,
+                        OTP.created_at < day_end,
+                    )
                 )
             )
-        )
-        otps_generated: int = otps_result.scalar_one()
+            otps_generated = otps_result.scalar_one()
+            otps_verified = 0
+            otps_failed = 0
+
+        # ── P2P latency percentiles from Redis samples ─────────────────────────
+        p2p_latency_p50_ms: float | None = None
+        p2p_latency_p95_ms: float | None = None
+        if redis_client is not None:
+            raw = await redis_client.lrange(f"metrics:latency:p2p:{date_str}", 0, -1)
+            if raw:
+                latencies = sorted(float(v) for v in raw)
+                n = len(latencies)
+                p2p_latency_p50_ms = latencies[int(n * 0.50)]
+                p2p_latency_p95_ms = latencies[min(int(n * 0.95), n - 1)]
 
         # ── Plan distribution snapshot (current totals) ────────────────────────
         async def _count_plan(plan: UserPlanEnum) -> int:
@@ -184,6 +209,10 @@ class MetricsService:
         row.kyc_approved = kyc_approved
         row.kyc_rejected = kyc_rejected
         row.otps_generated = otps_generated
+        row.otps_verified = otps_verified
+        row.otps_failed = otps_failed
+        row.p2p_latency_p50_ms = p2p_latency_p50_ms
+        row.p2p_latency_p95_ms = p2p_latency_p95_ms
         row.plan_free_users = plan_free_users
         row.plan_plus_users = plan_plus_users
         row.plan_pro_users = plan_pro_users

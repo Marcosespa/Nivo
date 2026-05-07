@@ -34,6 +34,12 @@ class BusinessMetricsDaily(Base):
 
     # Auth
     otps_generated: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    otps_verified: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    otps_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Latencies (ms, from Redis samples — None when no payments that day)
+    p2p_latency_p50_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
+    p2p_latency_p95_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Plans (for MRR proxy)
     plan_free_users: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

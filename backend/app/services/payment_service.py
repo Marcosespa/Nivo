@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import uuid
+import time
 from datetime import datetime, timezone
 import logging
 
@@ -230,6 +231,8 @@ class PaymentService:
             ValueError: Si transacción no existe o datos son inválidos
             PaymentError: Errores de validación
         """
+        t_start = time.perf_counter()
+
         # Recuperar transacción pendiente
         pending_tx_key = f"pending_tx:{tx_id}"
         pending_data_json = await redis_client.get(pending_tx_key)
@@ -352,6 +355,15 @@ class PaymentService:
 
         # Eliminar de Redis post-commit
         await redis_client.delete(pending_tx_key)
+
+        latency_ms = (time.perf_counter() - t_start) * 1000
+        logger.info("p2p.execute: %.0fms tx=%s", latency_ms, tx_id[:8])
+        _latency_key = f"metrics:latency:p2p:{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+        pipe = redis_client.pipeline()
+        pipe.lpush(_latency_key, int(latency_ms))
+        pipe.ltrim(_latency_key, 0, 499)
+        pipe.expire(_latency_key, 172800)
+        await pipe.execute()
 
         try:
             sender_name = sender.full_name or sender.phone_number

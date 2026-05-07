@@ -5,6 +5,7 @@ import secrets
 import logging
 import hashlib
 import hmac
+from datetime import datetime, timezone
 
 import redis.asyncio as redis
 
@@ -28,6 +29,15 @@ class OTPService:
         self.max_attempts = 3
         self.rate_limit_attempts = 3
         self.rate_limit_window = 3600  # 1 hora
+
+    def _today_key(self) -> str:
+        return datetime.now(timezone.utc).strftime("%Y%m%d")
+
+    async def _incr_metric(self, key: str) -> None:
+        pipe = self.redis.pipeline()
+        pipe.incr(key)
+        pipe.expire(key, 172800)  # 48h — survives snapshot job
+        await pipe.execute()
 
     def _hash_otp(self, phone_number: str, purpose: str, otp_code: str) -> str:
         """
@@ -74,6 +84,8 @@ class OTPService:
         # Inicializar contador de intentos fallidos
         attempts_key = f"otp:attempts:{phone_number}:{purpose}"
         await self.redis.delete(attempts_key)
+
+        await self._incr_metric(f"metrics:otp:gen:{self._today_key()}")
 
         logger.info(f"OTP generated for {phone_number[:7]}**** (purpose={purpose})")
         return otp_code
@@ -123,9 +135,11 @@ class OTPService:
             # Marcar como usado
             await self.redis.delete(otp_key)
             await self.redis.delete(attempts_key)
+            await self._incr_metric(f"metrics:otp:ok:{self._today_key()}")
             logger.info(f"OTP verified successfully for {phone_number[:7]}**** (purpose={purpose})")
             return True
 
+        await self._incr_metric(f"metrics:otp:fail:{self._today_key()}")
         return False
 
     async def invalidate(self, phone_number: str, purpose: str) -> None:
