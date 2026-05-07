@@ -74,6 +74,68 @@ class FakeRedis:
         self._data[key] = (value, expires_at)
         return True
 
+    async def lpush(self, key: str, *values: object) -> int:
+        self._purge(key)
+        current, exp = self._data.get(key, ([], None))
+        lst = list(current) if isinstance(current, list) else []
+        for v in values:
+            lst.insert(0, v)
+        self._data[key] = (lst, exp)
+        return len(lst)
+
+    async def ltrim(self, key: str, start: int, stop: int) -> bool:
+        self._purge(key)
+        if key not in self._data:
+            return True
+        current, exp = self._data[key]
+        if isinstance(current, list):
+            end = (stop + 1) if stop != -1 else None
+            self._data[key] = (current[start:end], exp)
+        return True
+
+    async def lrange(self, key: str, start: int, stop: int) -> list:
+        self._purge(key)
+        if key not in self._data:
+            return []
+        current = self._data[key][0]
+        if not isinstance(current, list):
+            return []
+        end = (stop + 1) if stop != -1 else None
+        return current[start:end]
+
+    def pipeline(self) -> "_FakeRedisPipeline":
+        return _FakeRedisPipeline(self)
+
+
+class _FakeRedisPipeline:
+    """Minimal pipeline: buffers commands and executes them sequentially."""
+
+    def __init__(self, redis: FakeRedis) -> None:
+        self._redis = redis
+        self._cmds: list[tuple[str, tuple]] = []
+
+    def incr(self, key: str) -> "_FakeRedisPipeline":
+        self._cmds.append(("incr", (key,)))
+        return self
+
+    def expire(self, key: str, ttl: int) -> "_FakeRedisPipeline":
+        self._cmds.append(("expire", (key, ttl)))
+        return self
+
+    def lpush(self, key: str, *values: object) -> "_FakeRedisPipeline":
+        self._cmds.append(("lpush", (key, *values)))
+        return self
+
+    def ltrim(self, key: str, start: int, stop: int) -> "_FakeRedisPipeline":
+        self._cmds.append(("ltrim", (key, start, stop)))
+        return self
+
+    async def execute(self) -> list:
+        results = []
+        for cmd, args in self._cmds:
+            results.append(await getattr(self._redis, cmd)(*args))
+        return results
+
 
 @pytest.fixture(scope="session")
 def anyio_backend():

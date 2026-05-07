@@ -359,11 +359,9 @@ class PaymentService:
         latency_ms = (time.perf_counter() - t_start) * 1000
         logger.info("p2p.execute: %.0fms tx=%s", latency_ms, tx_id[:8])
         _latency_key = f"metrics:latency:p2p:{datetime.now(timezone.utc).strftime('%Y%m%d')}"
-        pipe = redis_client.pipeline()
-        pipe.lpush(_latency_key, int(latency_ms))
-        pipe.ltrim(_latency_key, 0, 499)
-        pipe.expire(_latency_key, 172800)
-        await pipe.execute()
+        await redis_client.lpush(_latency_key, int(latency_ms))
+        await redis_client.ltrim(_latency_key, 0, 499)
+        await redis_client.expire(_latency_key, 172800)
 
         try:
             sender_name = sender.full_name or sender.phone_number

@@ -34,10 +34,8 @@ class OTPService:
         return datetime.now(timezone.utc).strftime("%Y%m%d")
 
     async def _incr_metric(self, key: str) -> None:
-        pipe = self.redis.pipeline()
-        pipe.incr(key)
-        pipe.expire(key, 172800)  # 48h — survives snapshot job
-        await pipe.execute()
+        await self.redis.incr(key)
+        await self.redis.expire(key, 172800)  # 48h — survives snapshot job
 
     def _hash_otp(self, phone_number: str, purpose: str, otp_code: str) -> str:
         """
@@ -71,7 +69,7 @@ class OTPService:
             await self.redis.expire(rate_limit_key, self.rate_limit_window)
         if attempts > self.rate_limit_attempts:
             logger.warning(f"Rate limit exceeded for {phone_number} (purpose={purpose})")
-            raise ValueError(f"Demasiados intentos. Intenta en 1 hora.")
+            raise ValueError("Demasiados intentos. Intenta en 1 hora.")
 
         # Generar OTP: 6 dígitos
         otp_code = str(secrets.randbelow(1000000)).zfill(6)

@@ -15,12 +15,12 @@ from datetime import date, datetime, timezone
 from typing import Annotated, Optional
 
 import redis.asyncio as redis
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.services.alert_service import AlertService, AlertEvent
+from app.services.alert_service import AlertService
 from app.services.metrics_service import metrics_service
 
 router = APIRouter()

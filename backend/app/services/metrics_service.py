@@ -16,7 +16,6 @@ from app.models.orm.user import User as UserORM, UserPlanEnum
 from app.models.orm.kyc_funnel_event import KYCFunnelEvent, KYCFunnelStepEnum, KYCFunnelResultEnum
 from app.models.orm.otp import OTP
 from app.services.alert_service import AlertService, AlertEvent
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
