@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import String, Boolean, DateTime, Enum as SQLEnum, func
+from sqlalchemy import String, Boolean, DateTime, Enum as SQLEnum, func, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -35,8 +35,8 @@ class User(Base):
 
     # Campos principales
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    phone_number: Mapped[str] = mapped_column(String(15), unique=True, nullable=False, index=True)
-    email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    phone_number: Mapped[str] = mapped_column(String(15), nullable=False)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Plan y estado
@@ -70,6 +70,12 @@ class User(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
+    )
+
+    __table_args__ = (
+        UniqueConstraint("phone_number", name="uq_user_phone"),
+        UniqueConstraint("email", name="uq_user_email"),
+        Index("ix_users_phone_number", "phone_number"),
     )
 
     # Relaciones

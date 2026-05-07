@@ -21,8 +21,13 @@ from app.core.config import settings
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-def _make_client(db_session: AsyncSession, fake_redis, host: str) -> AsyncClient:
-    """AsyncClient que simula peticiones desde una IP específica."""
+def _make_client(
+    db_session: AsyncSession,
+    fake_redis,
+    host: str,
+    base_url: str = "http://localhost",
+) -> AsyncClient:
+    """AsyncClient que simula peticiones desde una IP y Host específicos."""
     from app.api.v1.auth import get_redis as auth_get_redis
 
     async def override_db():
@@ -35,7 +40,7 @@ def _make_client(db_session: AsyncSession, fake_redis, host: str) -> AsyncClient
     app.dependency_overrides[auth_get_redis] = override_redis
 
     transport = ASGITransport(app=app, client=(host, 12345))
-    return AsyncClient(transport=transport, base_url="http://testserver")
+    return AsyncClient(transport=transport, base_url=base_url)
 
 
 async def _request_otp(client: AsyncClient, monkeypatch) -> dict:
@@ -132,6 +137,24 @@ class TestDevOtpGate:
             body = await _request_otp(client, monkeypatch)
 
         assert "dev_otp" in body, "dev_otp debe estar presente desde ::1 (IPv6 localhost)"
-        print(f"✓ dev_otp presente desde ::1")
+        print("✓ dev_otp presente desde ::1")
+
+        app.dependency_overrides.clear()
+
+    async def test_dev_otp_absent_when_host_header_is_external(
+        self, db_session: AsyncSession, fake_redis, monkeypatch
+    ):
+        """client IP local + Host: api.nivo.co → dev_otp ausente (gate adicional de Host header)."""
+        monkeypatch.setattr(settings, "ENVIRONMENT", "development")
+
+        async with _make_client(
+            db_session, fake_redis, "127.0.0.1", base_url="http://api.nivo.co"
+        ) as client:
+            body = await _request_otp(client, monkeypatch)
+
+        assert body.get("dev_otp") is None, (
+            "dev_otp NO debe exponerse cuando Host header apunta a dominio externo"
+        )
+        print("✓ dev_otp ausente con Host: api.nivo.co aunque client IP sea 127.0.0.1")
 
         app.dependency_overrides.clear()

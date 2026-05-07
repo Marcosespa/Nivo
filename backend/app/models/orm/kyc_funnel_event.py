@@ -41,7 +41,9 @@ class KYCFunnelEvent(Base):
     session_id: Mapped[Optional[str]] = mapped_column(nullable=True)
     elapsed_seconds: Mapped[Optional[int]] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc)
+        sa.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=sa.text("NOW()"),
     )
 
     __table_args__ = (

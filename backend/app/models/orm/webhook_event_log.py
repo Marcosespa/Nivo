@@ -34,7 +34,7 @@ class WebhookEventLog(Base):
 
     # Campos principales
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    provider: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # "wompi", "truora", etc
+    provider: Mapped[str] = mapped_column(String(50), nullable=False)  # "wompi", "truora", etc
     provider_event_id: Mapped[str] = mapped_column(String(256), nullable=False)  # ID del evento en el proveedor
     event_type: Mapped[str] = mapped_column(String(100), nullable=False)  # "transaction.updated", "kyc.verified", etc
     
@@ -49,21 +49,19 @@ class WebhookEventLog(Base):
             values_callable=lambda enum_cls: [item.value for item in enum_cls],
         ),
         default=WebhookEventStatusEnum.RECEIVED,
-        index=True,
     )
     
     # Detalle de procesamiento
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)  # IPv4 o IPv6
     error_message: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     retry_count: Mapped[int] = mapped_column(BigInteger, default=0)
-    related_transaction_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
+    related_transaction_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     
     # Timestamps
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
-        index=True,
     )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     
@@ -71,6 +69,9 @@ class WebhookEventLog(Base):
     __table_args__ = (
         UniqueConstraint("provider", "provider_event_id", name="uc_webhook_provider_event_id"),
         Index("idx_webhook_status_received", "status", "received_at"),
+        Index("webhook_event_logs_provider_idx", "provider"),
+        Index("webhook_event_logs_status_idx", "status"),
+        Index("webhook_event_logs_related_transaction_id_idx", "related_transaction_id"),
     )
 
     def __repr__(self) -> str:

@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, LargeBinary, func, Index
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, LargeBinary, func, Index, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -26,7 +26,7 @@ class PQCKey(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     algorithm: Mapped[str] = mapped_column(String(30), nullable=False)  # "ML-DSA-65", "ML-KEM-768"
     public_key: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)  # Llave pública en crudo
-    key_fingerprint: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)  # SHA-256 hex
+    key_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)  # SHA-256 hex
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -38,6 +38,8 @@ class PQCKey(Base):
     # Índices compuestos
     __table_args__ = (
         Index("idx_user_algo_active", "user_id", "algorithm", "is_active"),
+        UniqueConstraint("key_fingerprint", name="uq_pqc_key_fingerprint"),
+        Index("ix_pqc_keys_key_fingerprint", "key_fingerprint"),
     )
 
     # Relaciones
